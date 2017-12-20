@@ -8,7 +8,7 @@ from constants import TRAIN_AUDIO_PATH
 
 def read_background(name):
     path = osp.join(TRAIN_AUDIO_PATH, '_background_noise_', name)
-    wave = read_target_wave(path).astype(np.float32) /
+    wave = wavfile.read((path).astype(np.float32) / 1.0
     return wave
 
 
@@ -25,16 +25,16 @@ def augment(
         shift_range=2000,
         speed_ratio=0.2,
         volume_ratio=3,
-        white_noise=,
-        pink_noise,
-        doing_the_dishes,
-        dude_miaowing,
-        exercise_bike,
-        running_tap,
+        white_noise=1.0,
+        pink_noise=1.0,
+        doing_the_dishes=1.0,
+        dude_miaowing=1.0,
+        exercise_bike=1.0,
+        running_tap=1.0,
     ):
-    shifting =
+    # shifting =
     volume_adjust = np.random.uniform(1/volume_ratio, 1*volume_ratio, arr.shape[0])
-    return arr *
+    return arr
 
 class BatchGenerator(object):
 
