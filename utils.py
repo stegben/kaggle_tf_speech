@@ -13,7 +13,8 @@ STD = 3128.12
 
 def read_background(name):
     path = osp.join(TRAIN_AUDIO_PATH, '_background_noise_', name)
-    wave = (wavfile.read(path).astype(np.float32) - MEAN) / STD
+    _, wave = wavfile.read(path)
+    wave = (wave.astype(np.float32) - MEAN) / STD
     return wave
 
 
