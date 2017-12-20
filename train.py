@@ -13,7 +13,7 @@ from constants import (
 
 def main():
     # with open(GENERATED_RAW_DATA_PATH, 'rb') as f:
-    with open('../tf_speech_generated_data/RAW_DATA_20171219-225647_.pkl', 'rb') as f:
+    with open('../tf_speech_generated_data/RAW_DATA_20171220-083411_.pkl', 'rb') as f:
         data = pkl.load(f)
 
     train, val, test, _ = data
@@ -38,7 +38,8 @@ def main():
     batch_gen = BatchGenerator(x_train, y_train, batch_size=32)
     clf = WaveletNeuralNetworkClassifier(
         x_train.shape[1],
-        n_wavelets=32,
+        n_wavelets=64,
+        wavelet_length=16,
         output_dim=y_train.shape[1],
     )
     clf.fit_generator(
@@ -53,6 +54,7 @@ def main():
     # clf = WaveletNeuralNetworkClassifier(
     #     16000,
     #     n_wavelets=32,
+    #     wavelet_length=16,
     #     output_dim=12,
     # )
     import ipdb; ipdb.set_trace()

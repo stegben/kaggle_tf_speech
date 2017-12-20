@@ -35,6 +35,7 @@ class WaveletNeuralNetworkClassifier:
             self,
             input_dim: int,
             n_wavelets: int,
+            wavelet_length: int,
             output_dim: int,
             l2_regularize: float = 0.001,
             dropout_prob: float = 0.2,
@@ -43,6 +44,7 @@ class WaveletNeuralNetworkClassifier:
         ):
         self.input_dim = input_dim
         self.n_wavelets = n_wavelets
+        self.wavelet_length = wavelet_length
         self.output_dim = output_dim
         self.l2_regularize = l2_regularize
         self.dropout_prob = dropout_prob
@@ -90,21 +92,21 @@ class WaveletNeuralNetworkClassifier:
 
         x_place_reshape = tf.expand_dims(x_place, axis=1)
 
-        depth = 32
+        depth = self.n_wavelets
 
         wavelets = tf.get_variable(
             'wavelet_weights',
-            shape=[16, 1, depth],  # [wavelet_size, n_channel, n_wavelet]
+            shape=[self.wavelet_length, 1, depth],  # [wavelet_size, n_channel, n_wavelet]
             initializer=tf.keras.initializers.lecun_uniform(seed=self.seed_base),
         )
 
         imfs = []
-        for k in range(1, 17):
+        for k in range(1, 33):
             imf = tf.nn.convolution(
                 input=x_place_reshape,
                 filter=wavelets*k,
                 padding='SAME',
-                strides=2,
+                strides=None,
                 dilation_rate=(k,),
                 name=None,
                 data_format='NCW'
@@ -115,12 +117,11 @@ class WaveletNeuralNetworkClassifier:
                 strides=(4,),
                 data_format='channels_first',
             )
-            # print(imf.shape)
-            # print(pooled_imf.shape)
+            print(imf.shape)
+            print(pooled_imf.shape)
             imfs.append(pooled_imf)
 
         new_tensor = tf.stack(imfs, axis=1)
-        print(new_tensor.shape)
 
         kernel_1 = tf.get_variable(
             'kernel_weights',
@@ -240,6 +241,7 @@ class WaveletNeuralNetworkClassifier:
         loss_tensor = self.graph.get_tensor_by_name(self.OP_LOSS + ':0')
         train_op = self.graph.get_operation_by_name(self.OP_TRAIN)
 
+        run_metadata = tf.RunMetadata()
         _, batch_loss = self.sess.run(
             [train_op, loss_tensor],
             feed_dict={
@@ -248,7 +250,13 @@ class WaveletNeuralNetworkClassifier:
                 lr_place: learning_rate,
                 dropout_place: self.dropout_prob,
             },
+            options=tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE),
+            run_metadata=run_metadata,
         )
+        from tensorflow.python.client import timeline
+        trace = timeline.Timeline(step_stats=run_metadata.step_stats)
+        import ipdb; ipdb.set_trace()
+
         self.logger.debug('batch training loss: {}'.format(batch_loss))
         return batch_loss
 
