@@ -24,6 +24,8 @@ def main():
     x_train = x_train.astype(np.float32)
     mean = x_train.mean()
     std = x_train.std()
+    print(mean)
+    print(std)
     x_train = (x_train - mean) / std
     x_val = x_val.astype(np.float32)
     x_val = (x_val - mean) / std
@@ -35,15 +37,30 @@ def main():
     y_val = lb.transform(label_val).astype(np.float32)
     y_test = lb.transform(label_test).astype(np.float32)
     # import ipdb; ipdb.set_trace()
-    batch_gen = BatchGenerator(x_train, y_train, batch_size=32)
+    batch_gen = BatchGenerator(x_train, y_train, batch_size=16)
     clf = WaveletNeuralNetworkClassifier(
         x_train.shape[1],
         n_wavelets=64,
-        wavelet_length=16,
+        wavelet_range=[k for k in range(1, 33)],
+        wavelet_length=8,
+        conv_structure=[
+            (2, 8, 1, 2, 64, 'selu'),
+            (2, 8, 1, 2, 64, 'selu'),
+            (1, 4, 1, 4, -1, 'pooling'),
+            (2, 8, 1, 4, 128, 'selu'),
+            (2, 8, 1, 4, 128, 'selu'),
+            (2, 4, 2, 4, -1, 'pooling'),
+        ],
+        dense_structure=[
+            (512, 'selu'),
+            (512, 'selu'),
+        ],
         output_dim=y_train.shape[1],
     )
     clf.fit_generator(
         batch_gen,
+        x_subtrain=x_train,
+        y_subtrain=y_train,
         x_val=x_val,
         y_val=y_val,
         epochs=100,
