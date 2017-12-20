@@ -54,9 +54,9 @@ def augment(
         # speed adjust
         stretched_length = int(length * np.random.uniform(1 - speed_ratio, 1 + speed_ratio))
         arr_modified[idx, :] = pad_wave_with_zero(imresize(
-            arr_modified[idx, :],
+            arr_modified[[idx], :],
             size=(1, stretched_length),
-        ), length)
+        )[0,:], length)
 
         # volume
         # volume_adjust = np.random.uniform(1/volume_ratio, 1*volume_ratio, arr.shape[0])
