@@ -1,11 +1,13 @@
 import os.path as osp
 import shutil
 from tempfile import mkdtemp
+from datetime import datetime
 from typing import Iterable, Tuple
 import logging
 import pickle as pkl
 
 import numpy as np
+from sklearn.metrics import confusion_matrix
 import tensorflow as tf
 from tqdm import tqdm
 
@@ -42,12 +44,13 @@ class WaveletNeuralNetworkClassifier:
             conv_structure: Iterable[Tuple[int, int, int, int, int, str]],  # width, height, stride_width, stride_height, n_kernel, activation
             dense_structure: Iterable[Tuple[int, str]],  # neuron, activation
             output_dim: int,
-            l2_regularize: float = 0.0001,
+            l2_regularize: float = 0.00001,
             wavelet_dropout_prob: float = 0.2,
             conv_dropout_prob: float = 0.2,
             dense_dropout_prob: float = 0.5,
             logger=LOGGER,
             seed_base=2017,
+            name: str = 'clf',
         ):
         self.input_dim = input_dim
         self.n_wavelets = n_wavelets
@@ -62,6 +65,7 @@ class WaveletNeuralNetworkClassifier:
         self.dense_dropout_prob = dense_dropout_prob
         self.logger = logger
         self.seed_base = seed_base
+        self.name = name
 
         self.graph = tf.Graph()
         with self.graph.as_default():
@@ -234,7 +238,7 @@ class WaveletNeuralNetworkClassifier:
         loss = loss + self.l2_regularize * (l2_loss_dense + l2_loss_output)
 
         # training
-        tf.train.AdamOptimizer(lr_place).minimize(
+        tf.train.AdadeltaOptimizer(lr_place).minimize(
             loss,
             name=self.OP_TRAIN,
         )
@@ -250,22 +254,28 @@ class WaveletNeuralNetworkClassifier:
             epochs: int = 100,
             learning_rate: float = 0.001,
             early_stopping_rounds: int = 10,
+            save_folder: str = mkdtemp(),
             save_best: bool = True,
+            save_best_after: int = 3,
         ) -> None:
         batch_gen = train_gen
 
         waiting_rounds = 0
         best_validation_loss = float('inf')
-        if save_best:
-            temp_folder = mkdtemp()
-            temp_best_variable_path = osp.join(temp_folder, 'best_model')
+
         for epoch in range(epochs):
             for x_batch, y_batch in tqdm(batch_gen()):
                 self.fit_batch(x_batch, y_batch, learning_rate)
             current_subtrain_loss = self.evaluate(x_subtrain, y_subtrain)
             current_validation_loss = self.evaluate(x_val, y_val)
-            current_subtrain_accuracy = (y_subtrain.argmax(axis=1) == self.predict(x_subtrain).argmax(axis=1)).mean()
-            current_validation_accuracy = (y_val.argmax(axis=1) == self.predict(x_val).argmax(axis=1)).mean()
+
+            subtrain_ans = y_subtrain.argmax(axis=1)
+            subtrain_pred = self.predict(x_subtrain).argmax(axis=1)
+            current_subtrain_accuracy = (subtrain_ans == subtrain_pred).mean()
+
+            val_ans = y_val.argmax(axis=1)
+            val_pred = self.predict(x_val).argmax(axis=1)
+            current_validation_accuracy = (val_ans == val_pred).mean()
             print('Epoch {} subtrain loss: {}, subtrain accuracy: {}, validation loss: {}, validation accuracy: {}'.format(
             # self.logger.info('Epoch {} validation loss: {}, validation accuracy: {}'.format(
             # self.logger.info('Epoch {} train loss: {}, validation loss: {}, validation accuracy: {}'.format(
@@ -275,12 +285,22 @@ class WaveletNeuralNetworkClassifier:
                 current_validation_loss,
                 current_validation_accuracy,
             ))
+            print(confusion_matrix(subtrain_ans, subtrain_pred))
+            print(confusion_matrix(val_ans, val_pred))
 
             if current_validation_loss < best_validation_loss:
                 waiting_rounds = 0
                 # save best model
-                if save_best:
-                    self.saver.save(self.sess, temp_best_variable_path)
+                if save_best and (epoch >= save_best_after):
+                    model_name = '{}__epoch_{}_at_{}__tracc_{}__valacc_{}.mdl'.format(
+                        self.name,
+                        epoch,
+                        datetime.now().strftime('%Y%m%d-%H%M%S'),
+                        current_subtrain_accuracy,
+                        current_validation_accuracy,
+                    )
+                    best_variable_path = osp.join(save_folder, model_name)
+                    self.saver.save(self.sess, best_variable_path)
                 best_validation_loss = current_validation_loss
             else:
                 if waiting_rounds >= early_stopping_rounds:
@@ -288,8 +308,8 @@ class WaveletNeuralNetworkClassifier:
                     break
                 waiting_rounds += 1
         if save_best:
-            self.saver.restore(self.sess, temp_best_variable_path)
-            shutil.rmtree(temp_folder)
+            self.saver.restore(self.sess, best_variable_path)
+            # shutil.rmtree(temp_folder)
 
     def fit_batch(self, x_batch, y_batch, learning_rate):
         x_place = self.graph.get_tensor_by_name(self.X_PLACE + ':0')

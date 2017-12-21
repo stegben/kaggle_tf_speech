@@ -34,15 +34,15 @@ def sample_bg(wave, length, ratio):
 
 def augment(
         arr,
-        shift_range=2000,
-        speed_ratio=0.2,
-        volume_ratio=2,
-        white_noise_ratio=0.1,
-        pink_noise_ratio=0.1,
-        doing_the_dishes_ratio=0.1,
-        dude_miaowing_ratio=0.1,
-        exercise_bike_ratio=0.1,
-        running_tap_ratio=0.1,
+        shift_range=1,
+        speed_ratio=0.0,
+        volume_ratio=1,
+        white_noise_ratio=0.,
+        pink_noise_ratio=0.,
+        doing_the_dishes_ratio=0.,
+        dude_miaowing_ratio=0.,
+        exercise_bike_ratio=0.,
+        running_tap_ratio=0.,
     ):
     length = arr.shape[1]
     # shifting
@@ -94,12 +94,14 @@ class BatchGenerator(object):
             batch_size: int = 32,
             shuffle: bool = True,
             seed: int = 2017,
+            augmented: bool = False,
         ):
         self.x = x
         self.y = y
         self.batch_size = batch_size
         self.data_size = x.shape[0]
         self.shuffle = shuffle
+        self.augmented = augmented
         if shuffle:
             np.random.seed(seed)
 
@@ -112,7 +114,13 @@ class BatchGenerator(object):
         for start_idx in range(0, self.data_size, self.batch_size):
             end_idx = start_idx + self.batch_size
             target_idxs = data_index[start_idx: end_idx]
-            yield (
-                augment(self.x[target_idxs]),
-                self.y[target_idxs],
-            )
+            if self.augmented:
+                yield (
+                    augment(self.x[target_idxs]),
+                    self.y[target_idxs],
+                )
+            else:
+                yield (
+                    self.x[target_idxs],
+                    self.y[target_idxs],
+                )

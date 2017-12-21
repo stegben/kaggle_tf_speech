@@ -8,6 +8,7 @@ from model import WaveletNeuralNetworkClassifier
 from utils import BatchGenerator
 from constants import (
     GENERATED_RAW_DATA_PATH,
+    MODEL_DIR,
 )
 
 
@@ -37,25 +38,27 @@ def main():
     y_val = lb.transform(label_val).astype(np.float32)
     y_test = lb.transform(label_test).astype(np.float32)
     # import ipdb; ipdb.set_trace()
-    batch_gen = BatchGenerator(x_train, y_train, batch_size=16)
+    batch_gen = BatchGenerator(x_train, y_train, batch_size=32)
     clf = WaveletNeuralNetworkClassifier(
         x_train.shape[1],
-        n_wavelets=64,
-        wavelet_range=[k for k in range(1, 33)],
-        wavelet_length=8,
+        n_wavelets=32,
+        wavelet_range=[k for k in range(1, 17)],
+        wavelet_length=16,
         conv_structure=[
-            (2, 8, 1, 2, 64, 'selu'),
-            (2, 8, 1, 2, 64, 'selu'),
+            (2, 8, 1, 2, 32, 'selu'),
+            (2, 8, 1, 2, 32, 'selu'),
             (1, 4, 1, 4, -1, 'pooling'),
-            (2, 8, 1, 4, 128, 'selu'),
-            (2, 8, 1, 4, 128, 'selu'),
+            (2, 8, 1, 4, 64, 'selu'),
+            (2, 8, 1, 4, 64, 'selu'),
             (2, 4, 2, 4, -1, 'pooling'),
         ],
         dense_structure=[
             (512, 'selu'),
-            (512, 'selu'),
         ],
         output_dim=y_train.shape[1],
+        wavelet_dropout_prob=0.0,
+        conv_dropout_prob=0.0,
+        dense_dropout_prob=0.5,
     )
     clf.fit_generator(
         batch_gen,
@@ -67,13 +70,8 @@ def main():
         learning_rate=0.0003,
         early_stopping_rounds=10,
         save_best=True,
+        save_folder=MODEL_DIR,
     )
-    # clf = WaveletNeuralNetworkClassifier(
-    #     16000,
-    #     n_wavelets=32,
-    #     wavelet_length=16,
-    #     output_dim=12,
-    # )
     import ipdb; ipdb.set_trace()
 
 if __name__ == '__main__':
