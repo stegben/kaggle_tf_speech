@@ -43,29 +43,34 @@ y_val = lb.transform(label_val).astype(np.float32)
 y_test = lb.transform(label_test).astype(np.float32)
 # import ipdb; ipdb.set_trace()
 
-# model1 = WaveletNeuralNetworkClassifier(
-#     x_train.shape[1],
-#     n_wavelets=64,
-#     wavelet_range=[k for k in range(1, 5)],
-#     wavelet_length=16,
-#     conv_structure=[
-#         (2, 4, 1, 2, 64, 'selu'),
-#         (2, 4, 1, 2, 64, 'selu'),
-#         (1, 4, 1, 4, -1, 'pooling'),
-#         (2, 8, 1, 4, 128, 'selu'),
-#         (4, 16, 2, 8, 128, 'selu'),
-#         (2, 4, 2, 4, -1, 'pooling'),
-#     ],
-#     dense_structure=[
-#         (1024, 'selu'),
-#         (1024, 'selu'),
-#     ],
-#     output_dim=y_train.shape[1],
-#     wavelet_dropout_prob=0.0,
-#     conv_dropout_prob=0.0,
-#     dense_dropout_prob=0.5,
-# )
-model_2 = WaveletNeuralNetworkClassifier(
+model_1 = lambda: WaveletNeuralNetworkClassifier(
+    x_train.shape[1],
+    n_wavelets=32,
+    wavelet_range=[k for k in range(1, 17)],
+    wavelet_length=16,
+    conv_structure=[
+        (2, 4, 1, 2, 32, 'selu'),
+        (2, 4, 1, 2, 32, 'selu'),
+        (2, 4, 1, 2, 64, 'selu'),
+        # (1, 2, 1, 2, -1, 'pooling'),
+        (2, 4, 1, 2, 64, 'selu'),
+        (2, 4, 1, 2, 64, 'selu'),
+        (2, 8, 1, 2, 128, 'selu'),
+        # (1, 2, 1, 2, -1, 'pooling'),
+        (4, 16, 1, 2, 128, 'selu'),
+        (4, 16, 1, 2, 256, 'selu'),
+        (1, 2, 1, 2, -1, 'pooling'),
+    ],
+    dense_structure=[
+        (2048, 'selu'),
+        (2048, 'selu'),
+    ],
+    output_dim=y_train.shape[1],
+    wavelet_dropout_prob=0.0,
+    conv_dropout_prob=0.0,
+    dense_dropout_prob=0.5,
+)
+model_2 = lambda: WaveletNeuralNetworkClassifier(
     x_train.shape[1],
     n_wavelets=32,
     wavelet_range=[4*k for k in range(1, 25)],
@@ -94,11 +99,36 @@ model_2 = WaveletNeuralNetworkClassifier(
     dense_dropout_prob=0.1,
 )
 
+model_3 = lambda: WaveletNeuralNetworkClassifier(
+    x_train.shape[1],
+    n_wavelets=32,
+    wavelet_range=[4*k for k in range(1, 11)],
+    wavelet_length=-1,
+    conv_structure=[
+        (2, 4, 1, 2, 32, 'selu'),
+        (2, 4, 1, 2, 32, 'selu'),
+        (1, 2, 1, 2, -1, 'pooling'),
+        (2, 4, 1, 2, 32, 'selu'),
+        (2, 8, 1, 2, 64, 'selu'),
+        (1, 2, 1, 2, -1, 'pooling'),
+        (4, 16, 1, 2, 64, 'selu'),
+        (2, 4, 1, 2, -1, 'pooling'),
+    ],
+    dense_structure=[
+        (1024, 'selu'),
+        (512, 'selu'),
+    ],
+    output_dim=y_train.shape[1],
+    share_wavelet=False,
+    wavelet_dropout_prob=0.2,
+    conv_dropout_prob=0.2,
+    dense_dropout_prob=0.5,
+)
 def main():
     # with open(GENERATED_RAW_DATA_PATH, 'rb') as f:
     # import ipdb; ipdb.set_trace()
-    batch_gen = BatchGenerator(x_train, y_train, sample_weight_train, batch_size=32, augmented=True)
-    clf = model_2
+    batch_gen = BatchGenerator(x_train, y_train, sample_weight_train, batch_size=32, augmented=False)
+    clf = model_3()
     clf.fit_generator(
         batch_gen,
         x_subtrain=x_train,

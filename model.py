@@ -317,9 +317,11 @@ class WaveletNeuralNetworkClassifier:
             print(confusion_matrix(val_ans, val_pred))
 
             if current_validation_loss < best_validation_loss:
+                print('Improved!')
                 waiting_rounds = 0
                 # save best model
                 if save_best and (epoch >= save_best_after):
+                    print('save best')
                     model_name = '{}__epoch_{}_at_{}__tracc_{}__valacc_{}.mdl'.format(
                         self.name,
                         epoch,
@@ -333,9 +335,11 @@ class WaveletNeuralNetworkClassifier:
             else:
                 if waiting_rounds >= early_stopping_rounds:
                     self.logger.info('Early Stop')
+                    print('Early Stop')
                     break
                 waiting_rounds += 1
         if save_best:
+            print('restore')
             self.saver.restore(self.sess, best_variable_path)
             # shutil.rmtree(temp_folder)
 
