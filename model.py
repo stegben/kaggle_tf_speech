@@ -284,12 +284,12 @@ class WaveletNeuralNetworkClassifier:
             early_stopping_rounds: int = 10,
             save_folder: str = mkdtemp(),
             save_best: bool = True,
-            save_best_after: int = 3,
+            save_best_after: int = 0,
         ) -> None:
         batch_gen = train_gen
 
         waiting_rounds = 0
-        best_validation_loss = float('inf')
+        best_validation_accuracy = 0.
 
         for epoch in range(epochs):
             for x_batch, y_batch, weight_batch in tqdm(batch_gen()):
@@ -316,11 +316,12 @@ class WaveletNeuralNetworkClassifier:
             print(confusion_matrix(subtrain_ans, subtrain_pred))
             print(confusion_matrix(val_ans, val_pred))
 
-            if current_validation_loss < best_validation_loss:
+            if current_validation_accuracy > best_validation_accuracy:
                 print('Improved!')
                 waiting_rounds = 0
                 # save best model
-                if save_best and (epoch >= save_best_after):
+                # if save_best and (epoch >= save_best_after):
+                if save_best:
                     print('save best')
                     model_name = '{}__epoch_{}_at_{}__tracc_{}__valacc_{}.mdl'.format(
                         self.name,
@@ -331,7 +332,7 @@ class WaveletNeuralNetworkClassifier:
                     )
                     best_variable_path = osp.join(save_folder, model_name)
                     self.saver.save(self.sess, best_variable_path)
-                best_validation_loss = current_validation_loss
+                best_validation_accuracy = current_validation_accuracy
             else:
                 if waiting_rounds >= early_stopping_rounds:
                     self.logger.info('Early Stop')
@@ -370,7 +371,7 @@ class WaveletNeuralNetworkClassifier:
         self.logger.debug('batch training loss: {}'.format(batch_loss))
         return batch_loss
 
-    def evaluate(self, x_val, y_val, batch_size=128):
+    def evaluate(self, x_val, y_val, batch_size=512):
         loss = []
         batch_gen = BatchGenerator(
             x=x_val,
@@ -400,7 +401,7 @@ class WaveletNeuralNetworkClassifier:
         )
         return batch_loss
 
-    def predict(self, x_test, batch_size=128):
+    def predict(self, x_test, batch_size=512):
         batch_gen = BatchGenerator(
             x=x_test,
             y=np.empty_like(x_test),
