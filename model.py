@@ -26,6 +26,7 @@ class WaveletNeuralNetworkClassifier:
 
     X_PLACE = 'input_x_placeholder'
     Y_PLACE = 'input_y_placeholder'
+    SAMPLE_WEIGHT_PLACE = 'input_sample_weight_place'
     LR_PLACE = 'input_lr_placeholder'
     WAVELET_DROPOUT_PLACE = 'input_wavelet_dropout_placeholder_with_default_0'
     CONV_DROPOUT_PLACE = 'input_conv_dropout_placeholder_with_default_0'
@@ -44,6 +45,7 @@ class WaveletNeuralNetworkClassifier:
             conv_structure: Iterable[Tuple[int, int, int, int, int, str]],  # width, height, stride_width, stride_height, n_kernel, activation
             dense_structure: Iterable[Tuple[int, str]],  # neuron, activation
             output_dim: int,
+            share_wavelet: bool = True,
             l2_regularize: float = 0.00001,
             wavelet_dropout_prob: float = 0.2,
             conv_dropout_prob: float = 0.2,
@@ -59,6 +61,8 @@ class WaveletNeuralNetworkClassifier:
         self.conv_structure = conv_structure
         self.dense_structure = dense_structure
         self.output_dim = output_dim
+
+        self.share_wavelet = share_wavelet
         self.l2_regularize = l2_regularize
         self.wavelet_dropout_prob = wavelet_dropout_prob
         self.conv_dropout_prob = conv_dropout_prob
@@ -96,6 +100,11 @@ class WaveletNeuralNetworkClassifier:
             shape=[None, self.output_dim],
             name=self.Y_PLACE,
         )
+        sample_weight_place = tf.placeholder(
+            dtype=tf.float32,
+            shape=[None],
+            name=self.SAMPLE_WEIGHT_PLACE,
+        )
         lr_place = tf.placeholder(
             dtype=tf.float32,
             shape=(),  # means a scaler
@@ -119,25 +128,42 @@ class WaveletNeuralNetworkClassifier:
 
         # wavelet layers
         x_place_reshape = tf.expand_dims(x_place, axis=1)
-        self.n_wavelets
-        wavelets = tf.get_variable(
-            'wavelet_weights',
-            shape=[self.wavelet_length, 1, self.n_wavelets],  # [wavelet_size, n_channel, n_wavelet]
-            initializer=tf.keras.initializers.lecun_uniform(seed=self.seed_base - 1),
-        )
+        print(x_place_reshape.shape)
+        if self.share_wavelet:
+            wavelets = tf.get_variable(
+                'wavelet_weights',
+                shape=[self.wavelet_length, 1, self.n_wavelets],  # [wavelet_size, n_channel, n_wavelet]
+                initializer=tf.keras.initializers.lecun_uniform(seed=self.seed_base - 1),
+            )
         batch_size = x_place_reshape.shape[0]
         imfs = []
         for k in self.wavelet_range:
-            imf = tf.nn.convolution(
-                input=x_place_reshape,
-                filter=wavelets*k,
-                padding='SAME',
-                strides=None,
-                dilation_rate=(k,),
-                name="wavelet_1d_conv_{}".format(k),
-                data_format='NCW'
-            )
-            pooled_imf = tf.layers.max_pooling1d(
+            if not self.share_wavelet:
+                wavelets = tf.get_variable(
+                    'wavelet_weights_{}'.format(k),
+                    shape=[k, 1, self.n_wavelets],  # [wavelet_size, n_channel, n_wavelet]
+                    initializer=tf.keras.initializers.lecun_uniform(seed=self.seed_base - 1),
+                )
+                imf = tf.nn.convolution(
+                    input=x_place_reshape,
+                    filter=wavelets,
+                    padding='SAME',
+                    strides=None,
+                    dilation_rate=None,
+                    name="wavelet_1d_conv_{}".format(k),
+                    data_format='NCW'
+                )
+            else:
+                imf = tf.nn.convolution(
+                    input=x_place_reshape,
+                    filter=wavelets,
+                    padding='SAME',
+                    strides=None,
+                    dilation_rate=(k,),
+                    name="wavelet_1d_conv_{}".format(k),
+                    data_format='NCW'
+                )
+            pooled_imf = tf.layers.average_pooling1d(
                 tf.transpose(imf, perm=[0, 2, 1]),
                 pool_size=(4,),
                 strides=(4,),
@@ -146,7 +172,7 @@ class WaveletNeuralNetworkClassifier:
             )
             imfs.append(pooled_imf)
         wavelet_out = tf.stack(imfs, axis=1)
-        wavelet_out = tf.nn.selu(wavelet_out)
+        wavelet_out = tf.nn.tanh(wavelet_out)
         wavelet_out = tf.nn.dropout(wavelet_out, keep_prob=(1 - wavelet_dropout_place))
         print(imf.shape)
         print(pooled_imf.shape)
@@ -222,13 +248,15 @@ class WaveletNeuralNetworkClassifier:
             initializer=tf.zeros_initializer(),
         )
         l2_loss_output = tf.nn.l2_loss(weights_output) + tf.nn.l2_loss(biases_output)
-        output_ = tf.nn.softmax(a @ weights_output + biases_output)
+        output_before_softmax = a @ weights_output + biases_output
+        output_ = tf.nn.softmax(output_before_softmax)
         output = tf.identity(output_, name=self.OP_INFERENCE)
 
         # get loss
         loss_ = tf.losses.softmax_cross_entropy(
             y_place,
-            output,
+            output_before_softmax,
+            weights=sample_weight_place,
             label_smoothing=0.0,
         )
         loss = tf.reduce_mean(
@@ -264,8 +292,8 @@ class WaveletNeuralNetworkClassifier:
         best_validation_loss = float('inf')
 
         for epoch in range(epochs):
-            for x_batch, y_batch in tqdm(batch_gen()):
-                self.fit_batch(x_batch, y_batch, learning_rate)
+            for x_batch, y_batch, weight_batch in tqdm(batch_gen()):
+                self.fit_batch(x_batch, y_batch, weight_batch, learning_rate)
             current_subtrain_loss = self.evaluate(x_subtrain, y_subtrain)
             current_validation_loss = self.evaluate(x_val, y_val)
 
@@ -311,9 +339,10 @@ class WaveletNeuralNetworkClassifier:
             self.saver.restore(self.sess, best_variable_path)
             # shutil.rmtree(temp_folder)
 
-    def fit_batch(self, x_batch, y_batch, learning_rate):
+    def fit_batch(self, x_batch, y_batch, weight_batch, learning_rate):
         x_place = self.graph.get_tensor_by_name(self.X_PLACE + ':0')
         y_place = self.graph.get_tensor_by_name(self.Y_PLACE + ':0')
+        sample_weight_place = self.graph.get_tensor_by_name(self.SAMPLE_WEIGHT_PLACE + ':0')
         lr_place = self.graph.get_tensor_by_name(self.LR_PLACE + ':0')
         wavelet_dropout_place = self.graph.get_tensor_by_name(self.WAVELET_DROPOUT_PLACE + ':0')
         conv_dropout_place = self.graph.get_tensor_by_name(self.CONV_DROPOUT_PLACE + ':0')
@@ -326,6 +355,7 @@ class WaveletNeuralNetworkClassifier:
             feed_dict={
                 x_place: x_batch,
                 y_place: y_batch,
+                sample_weight_place: weight_batch,
                 lr_place: learning_rate,
                 wavelet_dropout_place: self.wavelet_dropout_prob,
                 conv_dropout_place: self.conv_dropout_prob,
@@ -336,14 +366,16 @@ class WaveletNeuralNetworkClassifier:
         self.logger.debug('batch training loss: {}'.format(batch_loss))
         return batch_loss
 
-    def evaluate(self, x_val, y_val, batch_size=32):
+    def evaluate(self, x_val, y_val, batch_size=128):
         loss = []
         batch_gen = BatchGenerator(
             x=x_val,
             y=y_val,
             batch_size=batch_size,
+            shuffle=False,
+            augmented=False,
         )
-        for x_batch, y_batch in batch_gen():
+        for x_batch, y_batch in tqdm(batch_gen()):
             loss.append(self.evaluate_batch(x_batch, y_batch))
         loss = np.mean(loss)
         return loss
@@ -351,6 +383,7 @@ class WaveletNeuralNetworkClassifier:
     def evaluate_batch(self, x_batch, y_batch):
         x_place = self.graph.get_tensor_by_name(self.X_PLACE + ':0')
         y_place = self.graph.get_tensor_by_name(self.Y_PLACE + ':0')
+        sample_weight_place = self.graph.get_tensor_by_name(self.SAMPLE_WEIGHT_PLACE + ':0')
         loss_op = self.graph.get_operation_by_name(self.OP_LOSS)
         loss_tensor = self.graph.get_tensor_by_name(self.OP_LOSS + ':0')
         _, batch_loss = self.sess.run(
@@ -358,20 +391,22 @@ class WaveletNeuralNetworkClassifier:
             feed_dict={
                 x_place: x_batch,
                 y_place: y_batch,
+                sample_weight_place: np.ones(x_batch.shape[0]),
             },
         )
         return batch_loss
 
-    def predict(self, x_test, batch_size=1):
+    def predict(self, x_test, batch_size=128):
         batch_gen = BatchGenerator(
             x=x_test,
             y=np.empty_like(x_test),
             batch_size=batch_size,
             shuffle=False,
+            augmented=False,
         )
         result = []
 
-        for x_batch, _ in batch_gen():
+        for x_batch, _ in tqdm(batch_gen()):
             batch_result = self.predict_batch(x_batch)
             result.append(batch_result)
         return np.concatenate(result, axis=0)
@@ -381,10 +416,13 @@ class WaveletNeuralNetworkClassifier:
         inference_tensor = self.graph.get_tensor_by_name(
             self.OP_INFERENCE + ':0')
         x_place = self.graph.get_tensor_by_name(self.X_PLACE + ':0')
+        sample_weight_place = self.graph.get_tensor_by_name(self.SAMPLE_WEIGHT_PLACE + ':0')
         _, batch_result = self.sess.run(
             [inference_op, inference_tensor],
             feed_dict={
                 x_place: x_batch,
+                sample_weight_place: np.ones(x_batch.shape[0]),
+
             },
         )
         return batch_result

@@ -34,15 +34,15 @@ def sample_bg(wave, length, ratio):
 
 def augment(
         arr,
-        shift_range=1,
-        speed_ratio=0.0,
-        volume_ratio=1,
-        white_noise_ratio=0.,
-        pink_noise_ratio=0.,
-        doing_the_dishes_ratio=0.,
-        dude_miaowing_ratio=0.,
-        exercise_bike_ratio=0.,
-        running_tap_ratio=0.,
+        shift_range=3000,
+        speed_ratio=0.5,
+        volume_ratio=3,
+        white_noise_ratio=0.03,
+        pink_noise_ratio=0.03,
+        doing_the_dishes_ratio=0.01,
+        dude_miaowing_ratio=0.01,
+        exercise_bike_ratio=0.01,
+        running_tap_ratio=0.01,
     ):
     length = arr.shape[1]
     # shifting
@@ -51,12 +51,12 @@ def augment(
 
 
     for idx in range(arr_modified.shape[0]):
-        # speed adjust
-        stretched_length = int(length * np.random.uniform(1 - speed_ratio, 1 + speed_ratio))
-        arr_modified[idx, :] = pad_wave_with_zero(imresize(
-            arr_modified[[idx], :],
-            size=(1, stretched_length),
-        )[0,:], length)
+        # # speed adjust
+        # stretched_length = int(length * np.random.uniform(1 - speed_ratio, 1 + speed_ratio))
+        # arr_modified[idx, :] = pad_wave_with_zero(imresize(
+        #     arr_modified[[idx], :],
+        #     size=(1, stretched_length),
+        # )[0,:], length)
 
         # volume
         # volume_adjust = np.random.uniform(1/volume_ratio, 1*volume_ratio, arr.shape[0])
@@ -91,6 +91,7 @@ class BatchGenerator(object):
             self,
             x: np.ndarray,
             y: np.ndarray,
+            sample_weight: np.ndarray = None,
             batch_size: int = 32,
             shuffle: bool = True,
             seed: int = 2017,
@@ -98,6 +99,7 @@ class BatchGenerator(object):
         ):
         self.x = x
         self.y = y
+        self.sample_weight = sample_weight
         self.batch_size = batch_size
         self.data_size = x.shape[0]
         self.shuffle = shuffle
@@ -115,12 +117,26 @@ class BatchGenerator(object):
             end_idx = start_idx + self.batch_size
             target_idxs = data_index[start_idx: end_idx]
             if self.augmented:
-                yield (
-                    augment(self.x[target_idxs]),
-                    self.y[target_idxs],
-                )
+                if self.sample_weight is None:
+                    yield (
+                        augment(self.x[target_idxs]),
+                        self.y[target_idxs],
+                    )
+                else:
+                    yield (
+                        augment(self.x[target_idxs]),
+                        self.y[target_idxs],
+                        self.sample_weight[target_idxs],
+                    )
             else:
-                yield (
-                    self.x[target_idxs],
-                    self.y[target_idxs],
-                )
+                if self.sample_weight is None:
+                    yield (
+                        self.x[target_idxs],
+                        self.y[target_idxs],
+                    )
+                else:
+                    yield (
+                        self.x[target_idxs],
+                        self.y[target_idxs],
+                        self.sample_weight[target_idxs],
+                    )
