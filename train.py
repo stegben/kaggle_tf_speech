@@ -34,6 +34,20 @@ def train_argparser():
         type=str,
         help='The model_id.',
     )
+    parser.add_argument(
+        '-lr',
+        '--learning_rate',
+        type=float,
+        help='learning rate',
+        default=0.001,
+    )
+    parser.add_argument(
+        '-bs',
+        '--batch_size',
+        type=int,
+        help='batch size, default 32',
+        default=32,
+    )
     args = parser.parse_args()
     return args
 
@@ -104,7 +118,7 @@ def main():
         x_train,
         y_train,
         sample_weight_train,
-        batch_size=32,
+        batch_size=args.batch_size,
         augmented=True,
     )
 
@@ -117,7 +131,7 @@ def main():
             (200, x_val, y_val, True),
             (1000, x_test, y_test, False),
         ),
-        learning_rate=0.01,
+        learning_rate=args.learning_rate,
         learning_rate_decay_ratio=1/3,
         learning_rate_decay_rounds=10,
         early_stopping_rounds=50,
