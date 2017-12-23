@@ -1,4 +1,5 @@
 import os.path as osp
+# import multiprocessing as mp
 
 import numpy as np
 from scipy.ndimage import zoom
@@ -33,15 +34,22 @@ def sample_bg(wave, length, ratio):
 
 
 def augment(
+        # q,
         arr,
         shift_range=3000,
         speed_ratio=0.3,
         volume_ratio=2,
+        white_noise=white_noise,
         white_noise_ratio=0.03,
+        pink_noise=pink_noise,
         pink_noise_ratio=0.03,
+        doing_the_dishes=doing_the_dishes,
         doing_the_dishes_ratio=0.03,
+        dude_miaowing=dude_miaowing,
         dude_miaowing_ratio=0.03,
+        exercise_bike=exercise_bike,
         exercise_bike_ratio=0.03,
+        running_tap=running_tap,
         running_tap_ratio=0.03,
     ):
     length = arr.shape[1]
@@ -83,6 +91,7 @@ def augment(
 
     arr_modified = arr_modified
     return arr_modified
+    # q.put(arr_modified)
 
 
 class AugmentationBatchGenerator(object):
@@ -108,7 +117,50 @@ class AugmentationBatchGenerator(object):
             np.random.seed(seed)
 
     def __call__(self):
+        # q = mp.Queue()
+        # p = mp.Process(target=augment, args=(
+        #     q,
+        #     self.x,
+        #     3000,
+        #     0.3,
+        #     2,
+        #     white_noise,
+        #     0.03,
+        #     pink_noise,
+        #     0.03,
+        #     doing_the_dishes,
+        #     0.03,
+        #     dude_miaowing,
+        #     0.03,
+        #     exercise_bike,
+        #     0.03,
+        #     running_tap,
+        #     0.03,
+        # ))
+        # p.start()
         while True:
+            # augmented_array = q.get()
+            # p.join()
+            # p = mp.Process(target=augment, args=(
+            #     q,
+            #     self.x,
+            #     3000,
+            #     0.3,
+            #     2,
+            #     white_noise,
+            #     0.03,
+            #     pink_noise,
+            #     0.03,
+            #     doing_the_dishes,
+            #     0.03,
+            #     dude_miaowing,
+            #     0.03,
+            #     exercise_bike,
+            #     0.03,
+            #     running_tap,
+            #     0.03,
+            # ))
+            # p.start()
             if self.shuffle:
                 data_index = np.random.permutation(self.data_size)
             else:
