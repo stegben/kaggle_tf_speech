@@ -49,7 +49,9 @@ class BatchGenerator(object):
 
 def restore_session(path):
     graph = tf.Graph()
-    sess = tf.Session(graph=graph)
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allow_growth = True
+    sess = tf.Session(graph=graph, config=config)
 
     with graph.as_default():
         saver = tf.train.import_meta_graph(path + '.meta', clear_devices=True)
