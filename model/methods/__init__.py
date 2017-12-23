@@ -46,7 +46,7 @@ def fit_generator(
     ) -> tf.Session:
 
     # TODO: Check only one validation set
-
+    early_stop = False
     early_stopping_waiting_rounds = 0
     learning_rate_decay_waiting_rounds = 0
     best_validation_accuracy = 0.
@@ -56,7 +56,7 @@ def fit_generator(
             y_batch,
             weight_batch,
     ) in tqdm(enumerate(train_batch_gen()), total=max_batches):
-        if n_batch > max_batches:
+        if (n_batch > max_batches) or early_stop:
             break
         fit_batch(
             sess,
@@ -112,7 +112,7 @@ def fit_generator(
                 else:
                     if early_stopping_waiting_rounds >= early_stopping_rounds:
                         print('Early Stop')
-                        break
+                        early_stop = True
                     else:
                         early_stopping_waiting_rounds += 1
 
