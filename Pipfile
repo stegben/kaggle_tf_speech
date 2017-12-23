@@ -9,6 +9,7 @@ verify_ssl = true
 
 ipdb = "*"
 tqdm = "*"
+"flake8-config-yoctol" = "*"
 
 
 [packages]

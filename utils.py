@@ -36,13 +36,13 @@ def augment(
         arr,
         shift_range=3000,
         speed_ratio=0.5,
-        volume_ratio=3,
+        volume_ratio=2,
         white_noise_ratio=0.03,
         pink_noise_ratio=0.03,
-        doing_the_dishes_ratio=0.01,
-        dude_miaowing_ratio=0.01,
-        exercise_bike_ratio=0.01,
-        running_tap_ratio=0.01,
+        doing_the_dishes_ratio=0.00,
+        dude_miaowing_ratio=0.00,
+        exercise_bike_ratio=0.00,
+        running_tap_ratio=0.00,
     ):
     length = arr.shape[1]
     # shifting
@@ -85,7 +85,7 @@ def augment(
     return arr_modified
 
 
-class BatchGenerator(object):
+class AugmentationBatchGenerator(object):
 
     def __init__(
             self,

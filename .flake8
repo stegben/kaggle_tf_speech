@@ -1,0 +1,19 @@
+[flake8]
+max-line-length = 100
+ignore =
+    E125,E121,E266,
+    # Django id is a commen convention
+    A002,A003,
+    # print is allowed
+    T001, T003
+exclude =
+    .git
+    # __pycache__
+    __pycache__
+    # virtual environment
+    .venv/
+    venv/
+    env/
+    docs/source/conf.py
+max_complexity = 10
+statistics = true

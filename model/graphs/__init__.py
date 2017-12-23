@@ -1,0 +1,1 @@
+from .wavelet_1d_2d_cnn_mlp import build_wavelet_1d_2d_cnn_mlp
