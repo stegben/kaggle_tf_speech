@@ -1,7 +1,7 @@
 import os.path as osp
 
 import numpy as np
-from scipy.misc import imresize
+from scipy.ndimage import zoom
 from scipy.io import wavfile
 
 from constants import TRAIN_AUDIO_PATH
@@ -35,14 +35,14 @@ def sample_bg(wave, length, ratio):
 def augment(
         arr,
         shift_range=3000,
-        speed_ratio=0.5,
+        speed_ratio=0.3,
         volume_ratio=2,
         white_noise_ratio=0.03,
         pink_noise_ratio=0.03,
-        doing_the_dishes_ratio=0.00,
-        dude_miaowing_ratio=0.00,
-        exercise_bike_ratio=0.00,
-        running_tap_ratio=0.00,
+        doing_the_dishes_ratio=0.03,
+        dude_miaowing_ratio=0.03,
+        exercise_bike_ratio=0.03,
+        running_tap_ratio=0.03,
     ):
     length = arr.shape[1]
     # shifting
@@ -52,11 +52,11 @@ def augment(
 
     for idx in range(arr_modified.shape[0]):
         # # speed adjust
-        # stretched_length = int(length * np.random.uniform(1 - speed_ratio, 1 + speed_ratio))
-        # arr_modified[idx, :] = pad_wave_with_zero(imresize(
-        #     arr_modified[[idx], :],
-        #     size=(1, stretched_length),
-        # )[0,:], length)
+        zoom_ratio = np.random.uniform(1 - speed_ratio, 1 + speed_ratio)
+        arr_modified[idx, :] = pad_wave_with_zero(
+            zoom(arr_modified[idx, :], zoom_ratio),
+            arr_modified.shape[1],
+        )
 
         # volume
         # volume_adjust = np.random.uniform(1/volume_ratio, 1*volume_ratio, arr.shape[0])
