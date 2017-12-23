@@ -108,35 +108,35 @@ class AugmentationBatchGenerator(object):
             np.random.seed(seed)
 
     def __call__(self):
-        if self.shuffle:
-            data_index = np.random.permutation(self.data_size)
-        else:
-            data_index = np.arange(self.data_size)
-
-        for start_idx in range(0, self.data_size, self.batch_size):
-            end_idx = start_idx + self.batch_size
-            target_idxs = data_index[start_idx: end_idx]
-            if self.augmented:
-                if self.sample_weight is None:
-                    yield (
-                        augment(self.x[target_idxs]),
-                        self.y[target_idxs],
-                    )
-                else:
-                    yield (
-                        augment(self.x[target_idxs]),
-                        self.y[target_idxs],
-                        self.sample_weight[target_idxs],
-                    )
+        while True:
+            if self.shuffle:
+                data_index = np.random.permutation(self.data_size)
             else:
-                if self.sample_weight is None:
-                    yield (
-                        self.x[target_idxs],
-                        self.y[target_idxs],
-                    )
+                data_index = np.arange(self.data_size)
+            for start_idx in range(0, self.data_size, self.batch_size):
+                end_idx = start_idx + self.batch_size
+                target_idxs = data_index[start_idx: end_idx]
+                if self.augmented:
+                    if self.sample_weight is None:
+                        yield (
+                            augment(self.x[target_idxs]),
+                            self.y[target_idxs],
+                        )
+                    else:
+                        yield (
+                            augment(self.x[target_idxs]),
+                            self.y[target_idxs],
+                            self.sample_weight[target_idxs],
+                        )
                 else:
-                    yield (
-                        self.x[target_idxs],
-                        self.y[target_idxs],
-                        self.sample_weight[target_idxs],
-                    )
+                    if self.sample_weight is None:
+                        yield (
+                            self.x[target_idxs],
+                            self.y[target_idxs],
+                        )
+                    else:
+                        yield (
+                            self.x[target_idxs],
+                            self.y[target_idxs],
+                            self.sample_weight[target_idxs],
+                        )
