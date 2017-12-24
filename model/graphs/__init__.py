@@ -1,1 +1,3 @@
 from .wavelet_1d_2d_cnn_mlp import build_wavelet_1d_2d_cnn_mlp
+from .wavelet_1d_gated_act_2d_cnn_mlp import build_wavelet_1d_gated_act_2d_cnn_mlp
+from .conv_1d_densenet import build_conv_1d_dense_net

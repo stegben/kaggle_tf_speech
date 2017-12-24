@@ -1,4 +1,8 @@
-from .graphs import build_wavelet_1d_2d_cnn_mlp
+from .graphs import (
+    build_wavelet_1d_2d_cnn_mlp,
+    build_wavelet_1d_gated_act_2d_cnn_mlp,
+    build_conv_1d_dense_net,
+)
 
 
 ALL_MODELS = {
@@ -147,5 +151,23 @@ ALL_MODELS = {
             'dense_dropout_prob': 0.2,
         },
     ),
-
+    '6_dense_1d': (
+        lambda input_dim, output_dim: build_conv_1d_dense_net(
+            input_dim,
+            output_dim,
+            dense_net_structure=(
+            # layers, n_kernels, n_compressed_kernels, window_length, activation, gated, pool_length,
+                (4, 16, 32, 8, '', True, 2),
+                (16, 32, 64, 16, '', True, 4),
+                (16, 32, 64, 32, 'selu', False, 4),
+            ),
+            dense_structure=(
+                (1024, 'selu'),
+            )
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.0,
+        },
+    ),
 }
