@@ -19,6 +19,7 @@ scipy = "*"
 scikit-learn = "*"
 tensorflow-gpu = "*"
 pillow = "*"
+pandas = "*"
 
 
 [requires]
