@@ -12,12 +12,10 @@ from ..names import (
     OP_LOSS,
     OP_TRAIN,
 )
-
-
-ACTIVATIONS = {
-    'selu': tf.nn.selu,
-    'relu': tf.nn.relu,
-}
+from .common import (
+    ACTIVATIONS,
+    get_input,
+)
 
 
 def build_wavelet_1d_gated_act_2d_cnn_mlp(
@@ -32,26 +30,8 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
         l2_regularize,
         seed_base=2017,
     ):
-    x_place = tf.placeholder(
-        dtype=tf.float32,
-        shape=[None, input_dim],
-        name=X_PLACE,
-    )
-    y_place = tf.placeholder(
-        dtype=tf.float32,
-        shape=[None, output_dim],
-        name=Y_PLACE,
-    )
-    sample_weight_place = tf.placeholder(
-        dtype=tf.float32,
-        shape=[None],
-        name=SAMPLE_WEIGHT_PLACE,
-    )
-    lr_place = tf.placeholder(
-        dtype=tf.float32,
-        shape=(),  # means a scaler
-        name=LR_PLACE,
-    )
+    x_place, y_place, sample_weight_place, lr_place = get_input(input_dim, output_dim)
+
     wavelet_dropout_place = tf.placeholder_with_default(
         0.0,
         shape=(),
@@ -82,7 +62,6 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
             shape=[wavelet_length, 1, n_wavelets],  # [wavelet_size, n_channel, n_wavelet]
             initializer=tf.keras.initializers.lecun_uniform(seed=seed_base - 3),
         )
-    batch_size = x_place_reshape.shape[0]
     imfs = []
     for k in wavelet_range:
         if not should_share_wavelet:
