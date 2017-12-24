@@ -4,6 +4,9 @@ from ..names import (
     Y_PLACE,
     SAMPLE_WEIGHT_PLACE,
     LR_PLACE,
+    WAVELET_DROPOUT_PLACE,
+    CONV_DROPOUT_PLACE,
+    DENSE_DROPOUT_PLACE,
 )
 
 
@@ -36,7 +39,22 @@ def get_input(input_dim, output_dim):
         shape=(),  # means a scaler
         name=LR_PLACE,
     )
-    return x_place, y_place, sample_weight_place, lr_place
+    wavelet_dropout_place = tf.placeholder_with_default(
+        0.0,
+        shape=(),
+        name=WAVELET_DROPOUT_PLACE,
+    )
+    conv_dropout_place = tf.placeholder_with_default(
+        0.0,
+        shape=(),
+        name=CONV_DROPOUT_PLACE,
+    )
+    dense_dropout_place = tf.placeholder_with_default(
+        0.0,
+        shape=(),
+        name=DENSE_DROPOUT_PLACE,
+    )
+    return x_place, y_place, sample_weight_place, lr_place, wavelet_dropout_place, conv_dropout_place, dense_dropout_place
 
 
 def conv1d_layer(

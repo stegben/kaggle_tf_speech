@@ -1,9 +1,6 @@
 import tensorflow as tf
 
 from ..names import (
-    WAVELET_DROPOUT_PLACE,
-    CONV_DROPOUT_PLACE,
-    DENSE_DROPOUT_PLACE,
     OP_INFERENCE,
     OP_LOSS,
     OP_TRAIN,
@@ -26,22 +23,7 @@ def build_wavelet_1d_2d_cnn_mlp(
         l2_regularize,
         seed_base=2017,
     ):
-    x_place, y_place, sample_weight_place, lr_place = get_input(input_dim, output_dim)
-    wavelet_dropout_place = tf.placeholder_with_default(
-        0.0,
-        shape=(),
-        name=WAVELET_DROPOUT_PLACE,
-    )
-    conv_dropout_place = tf.placeholder_with_default(
-        0.0,
-        shape=(),
-        name=CONV_DROPOUT_PLACE,
-    )
-    dense_dropout_place = tf.placeholder_with_default(
-        0.0,
-        shape=(),
-        name=DENSE_DROPOUT_PLACE,
-    )
+    x_place, y_place, sample_weight_place, lr_place, wavelet_dropout_place, conv_dropout_place, dense_dropout_place = get_input(input_dim, output_dim)
 
     # wavelet layers
     x_place_reshape = tf.expand_dims(x_place, axis=1)

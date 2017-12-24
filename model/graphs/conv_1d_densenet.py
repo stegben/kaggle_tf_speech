@@ -22,22 +22,7 @@ def build_conv_1d_dense_net(
         dense_structure,
         seed_base=2017,
     ):
-    x_place, y_place, sample_weight_place, lr_place = get_input(input_dim, output_dim)
-    _ = tf.placeholder_with_default(
-        0.0,
-        shape=(),
-        name=WAVELET_DROPOUT_PLACE,
-    )
-    conv_dropout_place = tf.placeholder_with_default(
-        0.0,
-        shape=(),
-        name=CONV_DROPOUT_PLACE,
-    )
-    dense_dropout_place = tf.placeholder_with_default(
-        0.0,
-        shape=(),
-        name=DENSE_DROPOUT_PLACE,
-    )
+    x_place, y_place, sample_weight_place, lr_place, _, conv_dropout_place, dense_dropout_place = get_input(input_dim, output_dim)
 
     x_place_reshape = tf.expand_dims(x_place, axis=1)
     print(x_place_reshape.shape)
