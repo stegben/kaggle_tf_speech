@@ -194,4 +194,33 @@ ALL_MODELS = {
             'dense_dropout_prob': 0.3,
         },
     ),
+    '8': (
+        lambda input_dim, output_dim: build_wavelet_1d_gated_act_2d_cnn_mlp(
+            input_dim,
+            output_dim,
+            n_wavelets=64,
+            wavelet_range=[2**k for k in range(6)],
+            wavelet_length=16,
+            conv_structure=[
+                (2, 4, 1, 2, 32, 'selu'),
+                (2, 4, 1, 2, 32, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+                (2, 4, 1, 2, 32, 'selu'),
+                (2, 8, 1, 2, 64, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+                (4, 16, 1, 2, 64, 'selu'),
+                (2, 4, 1, 2, -1, 'pooling'),
+            ],
+            dense_structure=[
+                (1024, 'selu'),
+                (1024, 'selu'),
+            ],
+            should_share_wavelet=True,
+            l2_regularize=0.00001,
+        ), {
+            'wavelet_dropout_prob': 0.1,
+            'conv_dropout_prob': 0.1,
+            'dense_dropout_prob': 0.2,
+        },
+    ),
 }
