@@ -128,7 +128,7 @@ def main():
         fname = path.split('/')[-1]
         x_sub.append(wave)
         fname_sub.append(fname)
-    x_sub = np.vstack(x_test)
+    x_sub = np.vstack(x_sub)
 
     with open(GENERATED_RAW_DATA_PATH, 'wb') as f:
         pkl.dump((
