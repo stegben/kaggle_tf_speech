@@ -118,7 +118,7 @@ def fit_generator(
 
                     if learning_rate_decay_waiting_rounds >= learning_rate_decay_rounds:
                         print('Reduce learning rate')
-                        learning_rate = learning_rate / learning_rate_decay_ratio
+                        learning_rate = learning_rate * learning_rate_decay_ratio
                         print('new learning rate: {}'.format(learning_rate))
                         learning_rate_decay_waiting_rounds = 0
                     else:
