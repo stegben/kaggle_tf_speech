@@ -172,4 +172,26 @@ ALL_MODELS = {
             'dense_dropout_prob': 0.1,
         },
     ),
+    '7_dense_1d_121': (
+        lambda input_dim, output_dim: build_conv_1d_dense_net(
+            input_dim,
+            output_dim,
+            dense_net_structure=(
+            # n_layers, n_kernels, n_compressed_kernels,
+            # window_length, activation, gated, pool_length
+                (6, 8, 32, 4, '', True, 2),
+                (12, 16, 64, 8, '', True, 4),
+                (24, 16, 64, 16, 'selu', False, 4),
+                (16, 32, 128, 32, 'selu', False, 4),
+            ),
+            dense_structure=(
+                (4096, 'selu'),
+                (4096, 'selu'),
+            )
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.1,
+            'dense_dropout_prob': 0.3,
+        },
+    ),
 }
