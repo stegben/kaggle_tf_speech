@@ -77,7 +77,7 @@ def fit_generator(
         ) in enumerate(evaluate_set):
             if (n_batch + 1) % batches_per_round > 0:
                 continue
-            prediction, loss = predict_and_evaluate(sess, x_evaluate, y_evaluate)
+            prediction, loss = predict_and_evaluate(sess, x_evaluate, y_evaluate, batch_size=32)
 
             ans = y_evaluate.argmax(axis=1)
             pred_max = prediction.argmax(axis=1)
