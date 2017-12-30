@@ -12,7 +12,7 @@ from .common import (
 )
 
 
-def build_conv_1d_dense_net(
+def build_log_conv_1d_dense_net(
         input_dim,
         output_dim,
         dense_net_structure,
@@ -20,8 +20,9 @@ def build_conv_1d_dense_net(
         do_global_pooling=False,
         seed_base=2017,
     ):
-    x_place, y_place, sample_weight_place, lr_place, _, conv_dropout_place, dense_dropout_place, is_training = get_input(input_dim, output_dim)
+    x_place, y_place, sample_weight_place, lr_place, _, conv_dropout_place, dense_dropout_place = get_input(input_dim, output_dim)
 
+    x_place = tf.log(tf.abs(x_place) + 1)
     x_place_reshape = tf.expand_dims(x_place, axis=1)
     print(x_place_reshape.shape)
 

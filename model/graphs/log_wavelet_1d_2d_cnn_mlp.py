@@ -1,13 +1,6 @@
 import tensorflow as tf
 
 from ..names import (
-    X_PLACE,
-    Y_PLACE,
-    SAMPLE_WEIGHT_PLACE,
-    LR_PLACE,
-    WAVELET_DROPOUT_PLACE,
-    CONV_DROPOUT_PLACE,
-    DENSE_DROPOUT_PLACE,
     OP_INFERENCE,
     OP_LOSS,
     OP_TRAIN,
@@ -18,7 +11,7 @@ from .common import (
 )
 
 
-def build_wavelet_1d_gated_act_2d_cnn_mlp(
+def build_log_wavelet_1d_2d_cnn_mlp(
         input_dim,
         output_dim,
         should_share_wavelet,
@@ -30,9 +23,10 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
         l2_regularize,
         seed_base=2017,
     ):
-    x_place, y_place, sample_weight_place, lr_place, wavelet_dropout_place, conv_dropout_place, dense_dropout_place, is_training = get_input(input_dim, output_dim)
+    x_place, y_place, sample_weight_place, lr_place, wavelet_dropout_place, conv_dropout_place, dense_dropout_place = get_input(input_dim, output_dim)
 
     # wavelet layers
+    x_place = tf.log(tf.abs(x_place) + 1)
     x_place_reshape = tf.expand_dims(x_place, axis=1)
     print(x_place_reshape.shape)
     if should_share_wavelet:
@@ -40,11 +34,6 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
             'wavelet_weights',
             shape=[wavelet_length, 1, n_wavelets],  # [wavelet_size, n_channel, n_wavelet]
             initializer=tf.keras.initializers.lecun_uniform(seed=seed_base - 1),
-        )
-        wavelet_gates = tf.get_variable(
-            'wavelet_gate_weights',
-            shape=[wavelet_length, 1, n_wavelets],  # [wavelet_size, n_channel, n_wavelet]
-            initializer=tf.keras.initializers.lecun_uniform(seed=seed_base - 3),
         )
     imfs = []
     for k in wavelet_range:
@@ -54,12 +43,7 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
                 shape=[k, 1, n_wavelets],  # [wavelet_size, n_channel, n_wavelet]
                 initializer=tf.keras.initializers.lecun_uniform(seed=seed_base - 1),
             )
-            wavelet_gates = tf.get_variable(
-                'wavelet_gate_weights_{}'.format(k),
-                shape=[k, 1, n_wavelets],  # [wavelet_size, n_channel, n_wavelet]
-                initializer=tf.keras.initializers.lecun_uniform(seed=seed_base - 4),
-            )
-            imf = tf.nn.tanh(tf.nn.convolution(
+            imf = tf.nn.convolution(
                 input=x_place_reshape,
                 filter=wavelets,
                 padding='SAME',
@@ -67,19 +51,9 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
                 dilation_rate=None,
                 name="wavelet_1d_conv_{}".format(k),
                 data_format='NCW'
-            ))
-            imf_gate = tf.nn.sigmoid(tf.nn.convolution(
-                input=x_place_reshape,
-                filter=wavelet_gates,
-                padding='SAME',
-                strides=None,
-                dilation_rate=None,
-                name="wavelet_1d_conv_{}".format(k),
-                data_format='NCW'
-            ))
-            imf_out = tf.multiply(imf, imf_gate)
+            )
         else:
-            imf = tf.nn.tanh(tf.nn.convolution(
+            imf = tf.nn.convolution(
                 input=x_place_reshape,
                 filter=wavelets,
                 padding='SAME',
@@ -87,19 +61,9 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
                 dilation_rate=(k,),
                 name="wavelet_1d_conv_{}".format(k),
                 data_format='NCW'
-            ))
-            imf_gate = tf.nn.sigmoid(tf.nn.convolution(
-                input=x_place_reshape,
-                filter=wavelet_gates,
-                padding='SAME',
-                strides=None,
-                dilation_rate=None,
-                name="wavelet_1d_conv_{}".format(k),
-                data_format='NCW'
-            ))
-            imf_out = tf.multiply(imf, imf_gate)
+            )
         pooled_imf = tf.layers.average_pooling1d(
-            tf.transpose(imf_out, perm=[0, 2, 1]),
+            tf.transpose(imf, perm=[0, 2, 1]),
             pool_size=(4,),
             strides=(4,),
             data_format='channels_first',
@@ -107,6 +71,7 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
         )
         imfs.append(pooled_imf)
     wavelet_out = tf.stack(imfs, axis=1)
+    wavelet_out = tf.nn.tanh(wavelet_out)
     wavelet_out = tf.nn.dropout(wavelet_out, keep_prob=(1 - wavelet_dropout_place))
     print(imf.shape)
     print(pooled_imf.shape)
@@ -116,12 +81,6 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
     conv_out = wavelet_out
     n_input_channel = n_wavelets
     for n_layer, (w, h, sw, sh, n_kernel, activation) in enumerate(conv_structure):
-        conv_out = tf.layers.batch_normalization(
-            conv_out,
-            axis=-1,
-            training=is_training,
-            fused=True,
-        )
         if activation == 'pooling':
             conv_out = tf.layers.max_pooling2d(
                 conv_out,
@@ -153,12 +112,6 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
             n_input_channel = n_kernel
 
         print(conv_out.shape)
-    conv_out = tf.layers.max_pooling2d(
-        conv_out,
-        pool_size=conv_out.shape[1:3],
-        strides=conv_out.shape[1:3],
-        data_format='channels_last',
-    )
 
     # Dense Layer
     a = tf.layers.flatten(conv_out)

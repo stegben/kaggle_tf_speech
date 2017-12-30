@@ -5,6 +5,7 @@ LR_PLACE = 'input_lr_placeholder'
 WAVELET_DROPOUT_PLACE = 'input_wavelet_dropout_placeholder_with_default_0'
 CONV_DROPOUT_PLACE = 'input_conv_dropout_placeholder_with_default_0'
 DENSE_DROPOUT_PLACE = 'input_dropout_placeholder_with_default_0'
+IS_TRAINING_PLACE = 'input_is_training_with_default'
 
 OP_INFERENCE = 'op_inference'
 OP_LOSS = 'op_loss'

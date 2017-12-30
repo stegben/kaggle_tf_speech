@@ -18,6 +18,7 @@ from constants import (
     UNKNOWN_LABEL,
     SILENCE_LABEL,
     GENERATED_RAW_DATA_PATH,
+    GENERATED_RAW_TEST_DATA_PATH,
 )
 
 
@@ -121,22 +122,26 @@ def main():
     x_test = np.vstack(x_test)
 
     print('submission data')
-    x_sub = []
+    x_sub = np.memmap(
+        GENERATED_RAW_TEST_DATA_PATH,
+        shape=(len(glob.glob(TEST_AUDIO_PATH_PATTERN)), 16000),
+        dtype=np.int16,
+        mode='w+',
+    )
     fname_sub = []
-    for path in tqdm(glob.glob(TEST_AUDIO_PATH_PATTERN)):
+    for idx, path in tqdm(enumerate(glob.glob(TEST_AUDIO_PATH_PATTERN))):
         wave = read_target_wave(path, N_SAMPLE)
         fname = path.split('/')[-1]
-        x_sub.append(wave)
+        x_sub[idx, :] = wave
         fname_sub.append(fname)
-    x_sub = np.vstack(x_sub)
 
     with open(GENERATED_RAW_DATA_PATH, 'wb') as f:
         pkl.dump((
             (x_train, label_train),
             (x_val, label_val),
             (x_test, label_test),
-            (x_sub, fname_sub),
-        ), f)
+            (GENERATED_RAW_TEST_DATA_PATH, fname_sub),
+        ), f, protocol=pkl.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':

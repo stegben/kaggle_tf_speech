@@ -18,7 +18,7 @@ from .common import (
 )
 
 
-def build_wavelet_1d_gated_act_2d_cnn_mlp(
+def build_log_wavelet_1d_gated_act_2d_cnn_mlp(
         input_dim,
         output_dim,
         should_share_wavelet,
@@ -30,8 +30,9 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
         l2_regularize,
         seed_base=2017,
     ):
-    x_place, y_place, sample_weight_place, lr_place, wavelet_dropout_place, conv_dropout_place, dense_dropout_place, is_training = get_input(input_dim, output_dim)
+    x_place, y_place, sample_weight_place, lr_place, wavelet_dropout_place, conv_dropout_place, dense_dropout_place = get_input(input_dim, output_dim)
 
+    x_place = tf.log(tf.abs(x_place) + 1)
     # wavelet layers
     x_place_reshape = tf.expand_dims(x_place, axis=1)
     print(x_place_reshape.shape)
@@ -116,12 +117,6 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
     conv_out = wavelet_out
     n_input_channel = n_wavelets
     for n_layer, (w, h, sw, sh, n_kernel, activation) in enumerate(conv_structure):
-        conv_out = tf.layers.batch_normalization(
-            conv_out,
-            axis=-1,
-            training=is_training,
-            fused=True,
-        )
         if activation == 'pooling':
             conv_out = tf.layers.max_pooling2d(
                 conv_out,
@@ -153,12 +148,6 @@ def build_wavelet_1d_gated_act_2d_cnn_mlp(
             n_input_channel = n_kernel
 
         print(conv_out.shape)
-    conv_out = tf.layers.max_pooling2d(
-        conv_out,
-        pool_size=conv_out.shape[1:3],
-        strides=conv_out.shape[1:3],
-        data_format='channels_last',
-    )
 
     # Dense Layer
     a = tf.layers.flatten(conv_out)

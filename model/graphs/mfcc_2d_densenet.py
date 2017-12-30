@@ -8,68 +8,110 @@ from ..names import (
 from .common import (
     ACTIVATIONS,
     get_input,
-    dense_1d_block,
+    dense_2d_block,
 )
 
 
-def build_conv_1d_dense_net(
+def build_mfcc_2d_densenet(
         input_dim,
         output_dim,
-        dense_net_structure,
+        frame_length,
+        frame_step,
+        n_mfccs,
+        num_mel_bins,
+        densenet_structure,
         dense_structure,
         do_global_pooling=False,
         seed_base=2017,
     ):
     x_place, y_place, sample_weight_place, lr_place, _, conv_dropout_place, dense_dropout_place, is_training = get_input(input_dim, output_dim)
 
-    x_place_reshape = tf.expand_dims(x_place, axis=1)
-    print(x_place_reshape.shape)
+    stfts = tf.contrib.signal.stft(
+        x_place,
+        frame_length=frame_length,
+        frame_step=frame_step,
+        fft_length=None,
+    )
+    magnitude_spectrograms = tf.abs(stfts)
+    # Warp the linear-scale, magnitude spectrograms into the mel-scale.
+    num_spectrogram_bins = magnitude_spectrograms.shape[-1].value
+    lower_edge_hertz, upper_edge_hertz = 40.0, 7600.0
+    linear_to_mel_weight_matrix = tf.contrib.signal.linear_to_mel_weight_matrix(
+        num_mel_bins,
+        num_spectrogram_bins,
+        16000,
+        lower_edge_hertz,
+        upper_edge_hertz,
+    )
+    mel_spectrograms = tf.tensordot(
+        magnitude_spectrograms,
+        linear_to_mel_weight_matrix,
+        1,
+    )
+    # Note: Shape inference for `tf.tensordot` does not currently handle this case.
+    mel_spectrograms.set_shape(
+        magnitude_spectrograms.shape[:-1].concatenate(
+            linear_to_mel_weight_matrix.shape[-1:]
+        )
+    )
+    log_offset = 1e-8
+    log_mel_spectrograms = tf.log(mel_spectrograms + log_offset)
+    # Keep the first `num_mfccs` MFCCs.
+    mfccs = tf.contrib.signal.mfccs_from_log_mel_spectrograms(
+        log_mel_spectrograms,
+    )[..., :n_mfccs]
+    print(mfccs.shape)
 
-    dense_conv_output = x_place_reshape
+    # conv layers
+    n_input_channel = 1
+    mfccs = tf.expand_dims(mfccs, axis=1)
+
+    dense_conv_output = mfccs
     for idx_dense_block, (
             n_layers,
             n_kernels,
             n_compressed_kernels,
-            window_length,
+            kernel_height,
+            kernel_width,
             activation,
-            gated,
-            pool_length,
-        ) in enumerate(dense_net_structure):
-        output_wave = dense_1d_block(
+            pool_height,
+            pool_width,
+        ) in enumerate(densenet_structure):
+        output_wave = dense_2d_block(
             input_wave=dense_conv_output,
             n_layers=n_layers,
             n_kernels=n_kernels,
             n_compressed_kernels=n_compressed_kernels,
-            window_length=window_length,
+            kernel_height=kernel_height,
+            kernel_width=kernel_width,
             activation=activation,
-            gated=gated,
-            name='{}_dense_1d_net'.format(idx_dense_block),
+            name='{}_dense_2d_net'.format(idx_dense_block),
         )
         print(output_wave.shape)
-        output_wave_pooled = tf.transpose(tf.layers.average_pooling1d(
-            tf.transpose(output_wave, perm=[0, 2, 1]),
-            pool_size=(pool_length,),
-            strides=(pool_length,),
+        output_wave_pooled = tf.layers.max_pooling2d(
+            output_wave,
+            pool_size=(pool_height, pool_width),
+            strides=(pool_height, pool_width),
+            padding='valid',
             data_format='channels_first',
-            name="dense_1d_pool_{}".format(idx_dense_block),
-        ), perm=[0, 2, 1])
+            name=None
+        )
         print(output_wave_pooled.shape)
-        dense_conv_output = tf.nn.dropout(
+        output_wave_pooled = tf.nn.dropout(output_wave_pooled, keep_prob=(1 - conv_dropout_place))
+        print(output_wave_pooled.shape)
+        dense_conv_out = tf.nn.dropout(
             output_wave_pooled,
             keep_prob=(1 - conv_dropout_place),
         )
-    print(dense_conv_output.shape)
     if do_global_pooling:
-        dense_conv_output = tf.transpose(tf.layers.average_pooling1d(
-            tf.transpose(dense_conv_output, perm=[0, 2, 1]),
-            pool_size=(dense_conv_output.shape[2],),
-            strides=(dense_conv_output.shape[2],),
+        dense_conv_out = tf.layers.max_pooling2d(
+            dense_conv_out,
+            pool_size=dense_conv_out.shape[2:],
+            strides=dense_conv_out.shape[2:],
             data_format='channels_first',
-            name="global_pool",
-        ), perm=[0, 2, 1])
-        print(dense_conv_output.shape)
+        )
 
-    dense_input = tf.layers.flatten(dense_conv_output)
+    dense_input = tf.layers.flatten(dense_conv_out)
     print(dense_input.shape)
     a = dense_input
     dense_input_dim = a.shape[1]

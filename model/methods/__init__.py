@@ -16,6 +16,7 @@ from ..names import (
     WAVELET_DROPOUT_PLACE,
     CONV_DROPOUT_PLACE,
     DENSE_DROPOUT_PLACE,
+    IS_TRAINING_PLACE,
     OP_INFERENCE,
     OP_LOSS,
     OP_TRAIN,
@@ -36,7 +37,7 @@ def fit_generator(
         learning_rate_decay_ratio: float = 1 / 3,
         learning_rate_decay_rounds: int = 10,
         early_stopping_rounds: int = 50,
-        save_folder: str = mkdtemp(),
+        save_folder: str = './',
         save_best: bool = True,
         model_name_prefix: str = 'some_random_model',
         saver=None,
@@ -135,6 +136,7 @@ def fit_batch(sess, x_batch, y_batch, weight_batch, learning_rate, **kwargs):
     y_place = graph.get_tensor_by_name(Y_PLACE + ':0')
     sample_weight_place = graph.get_tensor_by_name(SAMPLE_WEIGHT_PLACE + ':0')
     lr_place = graph.get_tensor_by_name(LR_PLACE + ':0')
+    is_training_place = graph.get_tensor_by_name(IS_TRAINING_PLACE + ':0')
     loss_tensor = graph.get_tensor_by_name(OP_LOSS + ':0')
     train_op = graph.get_operation_by_name(OP_TRAIN)
 
@@ -152,6 +154,7 @@ def fit_batch(sess, x_batch, y_batch, weight_batch, learning_rate, **kwargs):
             wavelet_dropout_place: kwargs['wavelet_dropout_prob'],
             conv_dropout_place: kwargs['conv_dropout_prob'],
             dense_dropout_place: kwargs['dense_dropout_prob'],
+            is_training_place: True,
         },
     )
 

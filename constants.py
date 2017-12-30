@@ -54,8 +54,16 @@ SAMPLE_RATE = 8000
 
 SILENCE_SLIDING_LENGTH = 1000
 
-raw_data_fname = "RAW_DATA_{}_.pkl".format(datetime.now().strftime("%Y%m%d-%H%M%S"))
+raw_data_fname = "RAW_DATA_1.pkl"
 GENERATED_RAW_DATA_PATH = osp.join(
     GENERATED_DATA_PATH,
     raw_data_fname,
+)
+GENERATED_RAW_TEST_DATA_PATH = osp.join(
+    GENERATED_DATA_PATH,
+    'test_x.npy'
+)
+LABEL_ENCODER_PATH = osp.join(
+    GENERATED_DATA_PATH,
+    'label_binarizer.pkl',
 )

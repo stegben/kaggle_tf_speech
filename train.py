@@ -1,3 +1,4 @@
+import os
 import argparse
 from collections import Counter
 import pickle as pkl
@@ -13,6 +14,7 @@ from utils import AugmentationBatchGenerator
 from constants import (
     GENERATED_RAW_DATA_PATH,
     MODEL_DIR,
+    LABEL_ENCODER_PATH,
 )
 
 
@@ -48,12 +50,54 @@ def train_argparser():
         help='batch size, default 32',
         default=32,
     )
+    parser.add_argument(
+        '-esr',
+        '--early_stopping_rounds',
+        type=int,
+        help='Early Stopping Rounds, default 100',
+        default=100,
+    )
+    parser.add_argument(
+        '-lrdr',
+        '--learning_rate_decay_rounds',
+        type=int,
+        help='Learning rate decay Rounds, default 30',
+        default=30,
+    )
+    parser.add_argument(
+        '-trbr',
+        '--training_set_batch_rounds',
+        type=int,
+        help='Training set will be evaluate every n rounds. n default 3000',
+        default=3000,
+    )
+    parser.add_argument(
+        '-valbr',
+        '--validation_set_batch_rounds',
+        type=int,
+        help='Validation set will be evaluate every n rounds. n default 200',
+        default=200,
+    )
+    parser.add_argument(
+        '-tebr',
+        '--testing_set_batch_rounds',
+        type=int,
+        help='Testing set will be evaluate every n rounds. n default 1000',
+        default=1000,
+    )
+    parser.add_argument(
+        '-vat',
+        '--val_augment_times',
+        type=int,
+        help='validation set augment times [4]',
+        default=4,
+    )
     args = parser.parse_args()
     return args
 
 
 def get_data():
-    with open('../tf_speech_generated_data/RAW_DATA_20171220-083411_.pkl', 'rb') as f:
+    with open(GENERATED_RAW_DATA_PATH, 'rb') as f:
         data = pkl.load(f)
 
     train, val, test, _ = data
@@ -78,10 +122,18 @@ def get_data():
     x_test = x_test / std
     # x_test = (x_test - mean) / std
 
-    lb = LabelBinarizer()
-    y_train = lb.fit_transform(label_train).astype(np.float32)
+    if os.path.exists(LABEL_ENCODER_PATH):
+        with open(LABEL_ENCODER_PATH, 'rb') as f:
+            lb = pkl.load(f)
+        y_train = lb.transform(label_train).astype(np.float32)
+    else:
+        lb = LabelBinarizer()
+        y_train = lb.fit_transform(label_train).astype(np.float32)
+        with open(LABEL_ENCODER_PATH, 'wb') as f:
+            pkl.dump(lb, f)
     y_val = lb.transform(label_val).astype(np.float32)
     y_test = lb.transform(label_test).astype(np.float32)
+
     return x_train, y_train, sample_weight_train, x_val, y_val, x_test, y_test,
 
 
@@ -114,6 +166,25 @@ def main():
         default_fit_params = {}
 
     x_train, y_train, sample_weight_train, x_val, y_val, x_test, y_test = get_data()
+    # augment x_val
+    val_gen = AugmentationBatchGenerator(
+        x_val,
+        y_val,
+        np.ones((x_val.shape[0], 1)),
+        batch_size=y_val.shape[0],
+        shuffle=False,
+        augmented=True
+    )
+    x_val_augmented = []
+    y_val_augmented = []
+    for idx, (x_batch, y_batch, _) in enumerate(val_gen()):
+        if idx > args.val_augment_times:
+            break
+        x_val_augmented.append(x_batch)
+        y_val_augmented.append(y_batch)
+    x_val_augmented = np.concatenate(x_val_augmented, axis=0)
+    y_val_augmented = np.concatenate(y_val_augmented, axis=0)
+
     batch_gen = AugmentationBatchGenerator(
         x_train,
         y_train,
@@ -127,14 +198,15 @@ def main():
         train_batch_gen=batch_gen,
         max_batches=1000000,
         evaluate_set=(
-            (3000, x_train, y_train, False),
-            (200, x_val, y_val, True),
-            (1000, x_test, y_test, False),
+            (args.training_set_batch_rounds, x_train, y_train, False),
+            (args.validation_set_batch_rounds, x_val_augmented, y_val_augmented, True),
+            (args.validation_set_batch_rounds, x_val, y_val, False),
+            (args.testing_set_batch_rounds, x_test, y_test, False),
         ),
         learning_rate=args.learning_rate,
-        learning_rate_decay_ratio=1/3,
-        learning_rate_decay_rounds=10,
-        early_stopping_rounds=50,
+        learning_rate_decay_ratio=1/2,
+        learning_rate_decay_rounds=args.learning_rate_decay_rounds,
+        early_stopping_rounds=args.early_stopping_rounds,
         save_folder=MODEL_DIR,
         save_best=True,
         model_name_prefix=args.model_id,

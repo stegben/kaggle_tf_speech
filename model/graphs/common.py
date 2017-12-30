@@ -7,6 +7,7 @@ from ..names import (
     WAVELET_DROPOUT_PLACE,
     CONV_DROPOUT_PLACE,
     DENSE_DROPOUT_PLACE,
+    IS_TRAINING_PLACE,
 )
 
 
@@ -54,7 +55,21 @@ def get_input(input_dim, output_dim):
         shape=(),
         name=DENSE_DROPOUT_PLACE,
     )
-    return x_place, y_place, sample_weight_place, lr_place, wavelet_dropout_place, conv_dropout_place, dense_dropout_place
+    is_training = tf.placeholder_with_default(
+        False,
+        shape=(),
+        name=IS_TRAINING_PLACE,
+    )
+    return (
+        x_place,
+        y_place,
+        sample_weight_place,
+        lr_place,
+        wavelet_dropout_place,
+        conv_dropout_place,
+        dense_dropout_place,
+        is_training,
+    )
 
 
 def conv1d_layer(
@@ -79,6 +94,33 @@ def conv1d_layer(
         dilation_rate=None,
         name=name + '_conv_op',
         data_format='NCW'
+    )
+    activation = ACTIVATIONS[activation]
+    return activation(conved)
+
+
+def conv2d_layer(
+        input_wave,
+        kernel_height,
+        kernel_width,
+        n_kernels,
+        activation,
+        name,
+        seed_base=2017,
+    ):
+    kernel = tf.get_variable(
+        name + 'kernel',
+        shape=[kernel_height, kernel_width, input_wave.shape[1], n_kernels],
+        initializer=tf.keras.initializers.lecun_uniform(seed=seed_base - 1),
+    )
+    conved = tf.nn.convolution(
+        input=input_wave,
+        filter=kernel,
+        padding='SAME',
+        strides=None,
+        dilation_rate=None,
+        name=name + '_conv_op',
+        data_format='NCHW'
     )
     activation = ACTIVATIONS[activation]
     return activation(conved)
@@ -159,4 +201,37 @@ def dense_1d_block(
     return a
 
 
-
+def dense_2d_block(
+        input_wave,
+        n_layers,
+        n_kernels,
+        n_compressed_kernels,
+        kernel_height,
+        kernel_width,
+        activation,
+        name='some_dense_2d_net',
+    ):
+    a = input_wave
+    outputs = []
+    for idx in range(n_layers):
+        a_with_prev_outputs = tf.concat(outputs + [a], axis=1)
+        compress_layer_name = name + str(idx) + '_compressed'
+        a_compressed = conv2d_layer(
+            a_with_prev_outputs,
+            1,
+            1,
+            n_compressed_kernels,
+            activation=activation,
+            name=compress_layer_name,
+        )
+        conv_layer_name = name + str(idx) + '_conv'
+        a = conv2d_layer(
+            a_compressed,
+            kernel_height,
+            kernel_width,
+            n_kernels,
+            activation=activation,
+            name=conv_layer_name,
+        )
+        outputs.append(a)
+    return a
