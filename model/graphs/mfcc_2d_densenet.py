@@ -79,8 +79,10 @@ def build_mfcc_2d_densenet(
         ) in enumerate(densenet_structure):
         output_wave = dense_2d_block(
             input_wave=dense_conv_output,
+            is_training=is_training,
             n_layers=n_layers,
             n_kernels=n_kernels,
+            with_compressed=(n_compressed_kernels is not None),
             n_compressed_kernels=n_compressed_kernels,
             kernel_height=kernel_height,
             kernel_width=kernel_width,
@@ -99,19 +101,19 @@ def build_mfcc_2d_densenet(
         print(output_wave_pooled.shape)
         output_wave_pooled = tf.nn.dropout(output_wave_pooled, keep_prob=(1 - conv_dropout_place))
         print(output_wave_pooled.shape)
-        dense_conv_out = tf.nn.dropout(
+        dense_conv_output = tf.nn.dropout(
             output_wave_pooled,
             keep_prob=(1 - conv_dropout_place),
         )
     if do_global_pooling:
-        dense_conv_out = tf.layers.max_pooling2d(
-            dense_conv_out,
-            pool_size=dense_conv_out.shape[2:],
-            strides=dense_conv_out.shape[2:],
+        dense_conv_output = tf.layers.max_pooling2d(
+            dense_conv_output,
+            pool_size=dense_conv_output.shape[2:],
+            strides=dense_conv_output.shape[2:],
             data_format='channels_first',
         )
 
-    dense_input = tf.layers.flatten(dense_conv_out)
+    dense_input = tf.layers.flatten(dense_conv_output)
     print(dense_input.shape)
     a = dense_input
     dense_input_dim = a.shape[1]

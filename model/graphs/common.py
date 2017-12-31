@@ -74,12 +74,19 @@ def get_input(input_dim, output_dim):
 
 def conv1d_layer(
         input_wave,
+        is_training,
         kernel_width,
         n_kernels,
         activation,
         name,
         seed_base=2017,
     ):
+    input_wave = tf.layers.batch_normalization(
+        input_wave,
+        axis=-1,
+        training=is_training,
+        fused=True,
+    )
     kernel = tf.get_variable(
         name + 'kernel',
         shape=[kernel_width, input_wave.shape[1], n_kernels],
@@ -101,6 +108,7 @@ def conv1d_layer(
 
 def conv2d_layer(
         input_wave,
+        is_training,
         kernel_height,
         kernel_width,
         n_kernels,
@@ -108,6 +116,12 @@ def conv2d_layer(
         name,
         seed_base=2017,
     ):
+    input_wave = tf.layers.batch_normalization(
+        input_wave,
+        axis=1,
+        training=is_training,
+        fused=True,
+    )
     kernel = tf.get_variable(
         name + 'kernel',
         shape=[kernel_height, kernel_width, input_wave.shape[1], n_kernels],
@@ -128,6 +142,7 @@ def conv2d_layer(
 
 def gated_conv1d_layer(
         input_wave,
+        is_training,
         kernel_width,
         n_kernels,
         name,
@@ -135,6 +150,7 @@ def gated_conv1d_layer(
     ):
     conved = conv1d_layer(
         input_wave,
+        is_training,
         kernel_width,
         n_kernels,
         activation='tanh',
@@ -142,6 +158,7 @@ def gated_conv1d_layer(
     )
     gated_conved = conv1d_layer(
         input_wave,
+        is_training,
         kernel_width,
         n_kernels,
         activation='sigmoid',
@@ -152,6 +169,7 @@ def gated_conv1d_layer(
 
 def dense_1d_block(
         input_wave,
+        is_training,
         n_layers,
         n_kernels,
         n_compressed_kernels,
@@ -168,6 +186,7 @@ def dense_1d_block(
             compress_layer_name = name + str(idx) + '_compressed'
             a_compressed = gated_conv1d_layer(
                 a_with_prev_outputs,
+                is_training,
                 1,
                 n_compressed_kernels,
                 compress_layer_name,
@@ -175,6 +194,7 @@ def dense_1d_block(
             conv_layer_name = name + str(idx) + '_conv'
             a = gated_conv1d_layer(
                 a_compressed,
+                is_training,
                 window_length,
                 n_kernels,
                 conv_layer_name,
@@ -184,6 +204,7 @@ def dense_1d_block(
             compress_layer_name = name + str(idx) + '_compressed'
             a_compressed = conv1d_layer(
                 a_with_prev_outputs,
+                is_training,
                 1,
                 n_compressed_kernels,
                 activation=activation,
@@ -192,6 +213,7 @@ def dense_1d_block(
             conv_layer_name = name + str(idx) + '_conv'
             a = conv1d_layer(
                 a_compressed,
+                is_training,
                 window_length,
                 n_kernels,
                 activation=activation,
@@ -203,35 +225,45 @@ def dense_1d_block(
 
 def dense_2d_block(
         input_wave,
+        is_training,
         n_layers,
         n_kernels,
         n_compressed_kernels,
         kernel_height,
         kernel_width,
         activation,
+        with_compressed=True,
+        concat_instead=True,
         name='some_dense_2d_net',
     ):
-    a = input_wave
-    outputs = []
+    a_input = input_wave
     for idx in range(n_layers):
-        a_with_prev_outputs = tf.concat(outputs + [a], axis=1)
-        compress_layer_name = name + str(idx) + '_compressed'
-        a_compressed = conv2d_layer(
-            a_with_prev_outputs,
-            1,
-            1,
-            n_compressed_kernels,
-            activation=activation,
-            name=compress_layer_name,
-        )
+        if with_compressed:
+            compress_layer_name = name + str(idx) + '_compressed'
+            a_input = conv2d_layer(
+                a_input,
+                is_training,
+                1,
+                1,
+                n_compressed_kernels,
+                activation=activation,
+                name=compress_layer_name,
+            )
         conv_layer_name = name + str(idx) + '_conv'
+        print(a_input.shape)
         a = conv2d_layer(
-            a_compressed,
+            a_input,
+            is_training,
             kernel_height,
             kernel_width,
             n_kernels,
             activation=activation,
             name=conv_layer_name,
         )
-        outputs.append(a)
+        if concat_instead:
+            a_input = tf.concat([a, a_input], axis=1)
+        else:
+            # TODO: fix dimension not match error
+            # a_input = a - a_input
+            a_input = tf.concat([a, a_input], axis=1)
     return a
