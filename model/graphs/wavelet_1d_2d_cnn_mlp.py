@@ -21,9 +21,15 @@ def build_wavelet_1d_2d_cnn_mlp(
         conv_structure,
         dense_structure,
         l2_regularize,
+        do_global_pooling=False,
+        log_epsilon=None,
+        wavelet_pool_size=4,
+        batch_norm=False,
         seed_base=2017,
     ):
     x_place, y_place, sample_weight_place, lr_place, wavelet_dropout_place, conv_dropout_place, dense_dropout_place, is_training = get_input(input_dim, output_dim)
+    if log_epsilon is not None:
+        x_place = tf.log(tf.abs(x_place) + log_epsilon)
 
     # wavelet layers
     x_place_reshape = tf.expand_dims(x_place, axis=1)
@@ -52,19 +58,23 @@ def build_wavelet_1d_2d_cnn_mlp(
                 data_format='NCW'
             )
         else:
+            extended_wavelet = tf.image.resize_bicubic(
+                tf.expand_dims(wavelets, axis=0),
+                size=[wavelet_length*(k+1), 1]
+            )
             imf = tf.nn.convolution(
                 input=x_place_reshape,
-                filter=wavelets,
+                filter=tf.squeeze(extended_wavelet, 0),
                 padding='SAME',
                 strides=None,
-                dilation_rate=(k,),
+                dilation_rate=None,
                 name="wavelet_1d_conv_{}".format(k),
                 data_format='NCW'
             )
         pooled_imf = tf.layers.average_pooling1d(
             tf.transpose(imf, perm=[0, 2, 1]),
-            pool_size=(4,),
-            strides=(4,),
+            pool_size=(wavelet_pool_size,),
+            strides=(wavelet_pool_size,),
             data_format='channels_first',
             name="wavelet_1d_pool_{}".format(k),
         )
@@ -76,17 +86,26 @@ def build_wavelet_1d_2d_cnn_mlp(
     print(pooled_imf.shape)
     print(wavelet_out.shape)
 
+    wavelet_out = tf.transpose(wavelet_out, [0, 3, 1, 2])
+
     # conv layers
     conv_out = wavelet_out
     n_input_channel = n_wavelets
     for n_layer, (w, h, sw, sh, n_kernel, activation) in enumerate(conv_structure):
+        if batch_norm:
+            conv_out = tf.layers.batch_normalization(
+                conv_out,
+                axis=1,
+                training=is_training,
+                fused=True,
+            )
         if activation == 'pooling':
             conv_out = tf.layers.max_pooling2d(
                 conv_out,
                 pool_size=(w, h),
                 strides=(sw, sh),
                 padding='valid',
-                data_format='channels_last',
+                data_format='channels_first',
                 name=None
             )
             conv_out = tf.nn.dropout(conv_out, keep_prob=(1 - conv_dropout_place))
@@ -104,13 +123,20 @@ def build_wavelet_1d_2d_cnn_mlp(
                 strides=(sw, sh),
                 dilation_rate=None,
                 name='conv1',
-                data_format='NHWC'
+                data_format='NCHW'
             )
             print(conv_out.shape)
             conv_out = ACTIVATIONS[activation](conv_out)
             n_input_channel = n_kernel
 
         print(conv_out.shape)
+    if do_global_pooling:
+        conv_out = tf.layers.max_pooling2d(
+            conv_out,
+            pool_size=conv_out.shape[2:],
+            strides=conv_out.shape[2:],
+            data_format='channels_first',
+        )
 
     # Dense Layer
     a = tf.layers.flatten(conv_out)
