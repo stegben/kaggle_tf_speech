@@ -18,11 +18,12 @@ def build_log_conv_1d_dense_net(
         dense_net_structure,
         dense_structure,
         do_global_pooling=False,
+        epsilon=1e-6,
         seed_base=2017,
     ):
     x_place, y_place, sample_weight_place, lr_place, _, conv_dropout_place, dense_dropout_place = get_input(input_dim, output_dim)
 
-    x_place = tf.log(tf.abs(x_place) + 1)
+    x_place = tf.log(tf.abs(x_place) + epsilon)
     x_place_reshape = tf.expand_dims(x_place, axis=1)
     print(x_place_reshape.shape)
 
