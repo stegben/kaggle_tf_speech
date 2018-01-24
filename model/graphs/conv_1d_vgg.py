@@ -12,63 +12,41 @@ from .common import (
 )
 
 
-def build_mfcc_2d_conv_global_pooling(
+def build_conv_1d_vgg(
         input_dim,
         output_dim,
-        frame_length,
-        frame_step,
-        n_mfccs,
-        num_mel_bins,
         conv_structure,
         dense_structure,
-        lower_edge_hertz=20.0,
-        upper_edge_hertz=8000.0,
+        samplewise_norm=False,
+        batch_norm=True,
+        do_global_pooling=True,
+        log_epsilon=None,
         conv_with_bias=False,
-        batch_norm=False,
         seed_base=2017,
     ):
     x_place, y_place, sample_weight_place, lr_place, _, conv_dropout_place, dense_dropout_place, is_training = get_input(input_dim, output_dim)
+    if samplewise_norm:
+        # TODO: normalize sample-wise
+        mean = tf.reduce_mean(x_place, axis=1)
+        std = tf.keras.backend.std(x_place, axis=1)
+        print(mean.shape)
+        print(std.shape)
+        x_place = (tf.transpose(x_place) - mean) / std
+        x_place = tf.transpose(x_place)
+    if log_epsilon is not None:
+        x_place = tf.log(tf.abs(x_place) + log_epsilon)
+    x_place_reshape = tf.expand_dims(x_place, axis=1)
+    print(x_place_reshape.shape)
 
-    stfts = tf.contrib.signal.stft(
-        x_place,
-        frame_length=frame_length,
-        frame_step=frame_step,
-        fft_length=None,
-    )
-    magnitude_spectrograms = tf.abs(stfts)
-    # Warp the linear-scale, magnitude spectrograms into the mel-scale.
-    num_spectrogram_bins = magnitude_spectrograms.shape[-1].value
-    linear_to_mel_weight_matrix = tf.contrib.signal.linear_to_mel_weight_matrix(
-        num_mel_bins,
-        num_spectrogram_bins,
-        16000,
-        lower_edge_hertz,
-        upper_edge_hertz,
-    )
-    mel_spectrograms = tf.tensordot(
-        magnitude_spectrograms,
-        linear_to_mel_weight_matrix,
-        1,
-    )
-    # Note: Shape inference for `tf.tensordot` does not currently handle this case.
-    mel_spectrograms.set_shape(
-        magnitude_spectrograms.shape[:-1].concatenate(
-            linear_to_mel_weight_matrix.shape[-1:]
-        )
-    )
-    log_offset = 1e-8
-    log_mel_spectrograms = tf.log(mel_spectrograms + log_offset)
-    # Keep the first `num_mfccs` MFCCs.
-    mfccs = tf.contrib.signal.mfccs_from_log_mel_spectrograms(
-        log_mel_spectrograms,
-    )[..., :n_mfccs]
-    print(mfccs.shape)
-
-    # conv layers
-    n_input_channel = 1
-    mfccs = tf.expand_dims(mfccs, axis=1)
-    conv_out = mfccs
-    for n_layer, (w, h, sw, sh, n_kernel, activation) in enumerate(conv_structure):
+    conv_out = x_place_reshape
+    conv_outs = []
+    n_input_channel = conv_out.shape[1]
+    for idx_conv, (
+            n_kernels,
+            kernel_width,
+            kernel_stride,
+            activation,
+        ) in enumerate(conv_structure):
         if batch_norm:
             conv_out = tf.layers.batch_normalization(
                 conv_out,
@@ -78,53 +56,68 @@ def build_mfcc_2d_conv_global_pooling(
             )
 
         if activation == 'pooling':
-            conv_out = tf.layers.max_pooling2d(
-                conv_out,
-                pool_size=(w, h),
-                strides=(sw, sh),
-                padding='valid',
+            conv_out = tf.layers.average_pooling1d(
+                tf.transpose(conv_out, perm=[0, 2, 1]),
+                pool_size=(kernel_width,),
+                strides=(kernel_stride,),
                 data_format='channels_first',
-                name=None
+                name="conv_1d_pool_{}".format(idx_conv),
             )
+            conv_out = tf.transpose(conv_out, [0, 2, 1])
             conv_out = tf.nn.dropout(conv_out, keep_prob=(1 - conv_dropout_place))
-            print(conv_out.shape)
+        elif activation == 'skip':
+            conv_outs.append(tf.layers.flatten(tf.transpose(tf.layers.average_pooling1d(
+                tf.transpose(conv_out, perm=[0, 2, 1]),
+                pool_size=(conv_out.shape[2],),
+                strides=(conv_out.shape[2],),
+                data_format='channels_first',
+                name="global_pool",
+            ), perm=[0, 2, 1])))
+            print(conv_outs)
         else:
             kernel = tf.get_variable(
-                'kernel_weights_{}'.format(n_layer+1),
-                shape=[w, h, n_input_channel, n_kernel],
-                initializer=tf.keras.initializers.lecun_uniform(seed=seed_base + n_layer),
+                'kernel_weights_{}'.format(idx_conv+1),
+                shape=[kernel_width, n_input_channel, n_kernels],
+                initializer=tf.keras.initializers.lecun_uniform(seed=seed_base + idx_conv),
             )
             conv_out = tf.nn.convolution(
                 input=conv_out,
                 filter=kernel,
                 padding='SAME',
-                strides=(sw, sh),
+                strides=(kernel_stride,),
                 dilation_rate=None,
-                name='conv1',
-                data_format='NCHW'
+                name='conv_{}'.format(idx_conv),
+                data_format='NCW'
             )
             if conv_with_bias:
                 bias = tf.get_variable(
-                    'kernel_bias_{}'.format(n_layer+1),
-                    shape=conv_out.shape[1:],
+                    'kernel_bias_{}'.format(idx_conv+1),
+                    shape=conv_out.shape[1:2],
                     initializer=tf.zeros_initializer(),
                 )
-                conv_out = conv_out + bias
-            print(conv_out.shape)
+                conv_out = tf.transpose(conv_out, [0, 2, 1]) + bias
+                conv_out = tf.transpose(conv_out, [0, 2, 1])
             conv_out = ACTIVATIONS[activation](conv_out)
-            n_input_channel = n_kernel
-
+            n_input_channel = n_kernels
         print(conv_out.shape)
-    conv_out = tf.layers.max_pooling2d(
-        conv_out,
-        pool_size=conv_out.shape[2:],
-        strides=conv_out.shape[2:],
-        data_format='channels_first',
-    )
-    dense_input = tf.layers.flatten(conv_out)
+
+    if do_global_pooling:
+        conv_outs.append(tf.layers.flatten(tf.transpose(tf.layers.average_pooling1d(
+            tf.transpose(conv_out, perm=[0, 2, 1]),
+            pool_size=(conv_out.shape[2],),
+            strides=(conv_out.shape[2],),
+            data_format='channels_first',
+            name="global_pool",
+        ), perm=[0, 2, 1])))
+    else:
+        conv_outs.append(tf.layers.flatten(conv_out))
+    print(conv_outs)
+
+    dense_input = tf.concat(conv_outs, axis=1)
     print(dense_input.shape)
     a = dense_input
     dense_input_dim = a.shape[1]
+    dense_output_dim = dense_input_dim
     for n_layer, (n_neuron, activation) in enumerate(dense_structure):
         dense_output_dim = n_neuron
         weights = tf.get_variable(
@@ -171,9 +164,7 @@ def build_mfcc_2d_conv_global_pooling(
     # loss = loss + l2_regularize * (l2_loss_dense + l2_loss_output)
 
     # training
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        tf.train.GradientDescentOptimizer(lr_place).minimize(
-            loss,
-            name=OP_TRAIN,
-        )
+    tf.train.GradientDescentOptimizer(lr_place).minimize(
+        loss,
+        name=OP_TRAIN,
+    )

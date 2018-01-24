@@ -89,7 +89,7 @@ def build_mfcc_2d_densenet(
             activation=activation,
             name='{}_dense_2d_net'.format(idx_dense_block),
         )
-        print(output_wave.shape)
+        # print(output_wave.shape)
         output_wave_pooled = tf.layers.max_pooling2d(
             output_wave,
             pool_size=(pool_height, pool_width),
@@ -98,9 +98,9 @@ def build_mfcc_2d_densenet(
             data_format='channels_first',
             name=None
         )
-        print(output_wave_pooled.shape)
+        # print(output_wave_pooled.shape)
         output_wave_pooled = tf.nn.dropout(output_wave_pooled, keep_prob=(1 - conv_dropout_place))
-        print(output_wave_pooled.shape)
+        # print(output_wave_pooled.shape)
         dense_conv_output = tf.nn.dropout(
             output_wave_pooled,
             keep_prob=(1 - conv_dropout_place),

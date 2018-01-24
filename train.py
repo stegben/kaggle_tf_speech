@@ -69,7 +69,7 @@ def train_argparser():
         '--training_set_batch_rounds',
         type=int,
         help='Training set will be evaluate every n rounds. n default 3000',
-        default=3000,
+        default=1000,
     )
     parser.add_argument(
         '-valbr',
@@ -90,7 +90,7 @@ def train_argparser():
         '--val_augment_times',
         type=int,
         help='validation set augment times [4]',
-        default=4,
+        default=3,
     )
     args = parser.parse_args()
     return args
@@ -106,20 +106,20 @@ def get_data():
     x_test, label_test = test
 
     x_train = x_train.astype(np.float32)
-    mean = x_train.mean()
-    std = x_train.std()
+    # mean = x_train.mean()
+    # std = x_train.std()
     # x_train = (x_train - mean) / std
-    x_train = x_train / std
+    # x_train = x_train / std
     # x_train = ((x_train.T - x_train.mean(axis=1)) / x_train.std(axis=1)).T
 
     label_count = Counter(label_train)
     sample_weight_train = np.array([2000/label_count[label] for label in label_train], dtype=np.float32)
 
     x_val = x_val.astype(np.float32)
-    x_val = x_val / std
+    # x_val = x_val / std
     # x_val = (x_val - mean) / std
     x_test = x_test.astype(np.float32)
-    x_test = x_test / std
+    # x_test = x_test / std
     # x_test = (x_test - mean) / std
 
     if os.path.exists(LABEL_ENCODER_PATH):
@@ -173,7 +173,7 @@ def main():
         np.ones((x_val.shape[0], 1)),
         batch_size=y_val.shape[0],
         shuffle=False,
-        augmented=True
+        augmented=False,
     )
     x_val_augmented = []
     y_val_augmented = []
@@ -199,8 +199,8 @@ def main():
         max_batches=1000000,
         evaluate_set=(
             (args.training_set_batch_rounds, x_train, y_train, False),
-            (args.validation_set_batch_rounds, x_val_augmented, y_val_augmented, True),
-            (args.validation_set_batch_rounds, x_val, y_val, False),
+            # (args.validation_set_batch_rounds, x_val_augmented, y_val_augmented, True),
+            (args.validation_set_batch_rounds, x_val, y_val, True),
             (args.testing_set_batch_rounds, x_test, y_test, False),
         ),
         learning_rate=args.learning_rate,

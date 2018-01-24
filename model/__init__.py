@@ -1,13 +1,9 @@
 from .graphs import (
     build_wavelet_1d_2d_cnn_mlp,
-    build_log_wavelet_1d_2d_cnn_mlp,
-    build_wavelet_1d_gated_act_2d_cnn_mlp,
-    build_log_wavelet_1d_gated_act_2d_cnn_mlp,
     build_conv_1d_dense_net,
-    build_log_conv_1d_dense_net,
+    build_conv_1d_vgg,
     build_mfcc_2d_conv,
     build_mfcc_2d_densenet,
-    build_mfcc_2d_conv_global_pooling,
 )
 
 
@@ -201,7 +197,7 @@ ALL_MODELS = {
         },
     ),
     '8': (
-        lambda input_dim, output_dim: build_wavelet_1d_gated_act_2d_cnn_mlp(
+        lambda input_dim, output_dim: build_wavelet_1d_2d_cnn_mlp(
             input_dim,
             output_dim,
             n_wavelets=64,
@@ -222,6 +218,7 @@ ALL_MODELS = {
                 (1024, 'selu'),
             ],
             should_share_wavelet=True,
+            wavelet_use_gated_activation=True,
             l2_regularize=0.00001,
         ), {
             'wavelet_dropout_prob': 0.1,
@@ -289,7 +286,7 @@ ALL_MODELS = {
         },
     ),
     '11': (
-        lambda input_dim, output_dim: build_wavelet_1d_gated_act_2d_cnn_mlp(
+        lambda input_dim, output_dim: build_wavelet_1d_2d_cnn_mlp(
             input_dim,
             output_dim,
             should_share_wavelet=True,
@@ -313,6 +310,7 @@ ALL_MODELS = {
                 (4096, 'selu'),
                 (4096, 'selu'),
             ],
+            wavelet_use_gated_activation=True,
             l2_regularize=0.00001,
         ), {
             'wavelet_dropout_prob': 0.1,
@@ -321,7 +319,7 @@ ALL_MODELS = {
         },
     ),
     '12_dense_1d': (
-        lambda input_dim, output_dim: build_log_conv_1d_dense_net(
+        lambda input_dim, output_dim: build_conv_1d_dense_net(
             input_dim,
             output_dim,
             dense_net_structure=(
@@ -341,6 +339,7 @@ ALL_MODELS = {
                 (1024, 'selu'),
             ),
             do_global_pooling=True,
+            log_epsilon=1.,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -348,7 +347,7 @@ ALL_MODELS = {
         },
     ),
     '13_dense_1d_121': (
-        lambda input_dim, output_dim: build_log_conv_1d_dense_net(
+        lambda input_dim, output_dim: build_conv_1d_dense_net(
             input_dim,
             output_dim,
             dense_net_structure=(
@@ -362,7 +361,8 @@ ALL_MODELS = {
             dense_structure=(
                 (4096, 'selu'),
                 (4096, 'selu'),
-            )
+            ),
+            log_epsilon=1.,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -401,7 +401,7 @@ ALL_MODELS = {
         },
     ),
     '15_mfcc_global_pool': (
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=500,
@@ -424,7 +424,8 @@ ALL_MODELS = {
             dense_structure=(
                 (4096, 'selu'),
                 (4096, 'selu'),
-            )
+            ),
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.0,
@@ -463,7 +464,7 @@ ALL_MODELS = {
         },
     ),
     '17_mfcc_global_pool': (
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=500,
@@ -486,7 +487,8 @@ ALL_MODELS = {
             dense_structure=(
                 (4096, 'selu'),
                 (4096, 'selu'),
-            )
+            ),
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -547,7 +549,7 @@ ALL_MODELS = {
         },
     ),
     '20_mfcc': (
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=500,
@@ -570,7 +572,8 @@ ALL_MODELS = {
             dense_structure=(
                 (4096, 'selu'),
                 (4096, 'selu'),
-            )
+            ),
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -578,7 +581,7 @@ ALL_MODELS = {
         },
     ),
     '21_mfcc': (
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=500,
@@ -601,7 +604,8 @@ ALL_MODELS = {
             dense_structure=(
                 (4096, 'selu'),
                 (4096, 'selu'),
-            )
+            ),
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -609,7 +613,7 @@ ALL_MODELS = {
         },
     ),
     '22_mfcc': (
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=500,
@@ -634,6 +638,7 @@ ALL_MODELS = {
                 (4096, 'selu'),
             ),
             conv_with_bias=True,
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -641,7 +646,7 @@ ALL_MODELS = {
         },
     ),
     '23_mfcc': (
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=500,
@@ -666,6 +671,7 @@ ALL_MODELS = {
                 (4096, 'selu'),
             ),
             conv_with_bias=True,
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -673,7 +679,7 @@ ALL_MODELS = {
         },
     ),
     '24_mfcc': (
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=480,
@@ -698,6 +704,7 @@ ALL_MODELS = {
                 (4096, 'selu'),
             ),
             conv_with_bias=True,
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -705,7 +712,7 @@ ALL_MODELS = {
         },
     ),
     '25': (
-        lambda input_dim, output_dim: build_wavelet_1d_gated_act_2d_cnn_mlp(
+        lambda input_dim, output_dim: build_wavelet_1d_2d_cnn_mlp(
             input_dim,
             output_dim,
             should_share_wavelet=True,
@@ -731,6 +738,7 @@ ALL_MODELS = {
                 (2048, 'selu'),
             ],
             l2_regularize=0.00001,
+            wavelet_use_gated_activation=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -738,7 +746,7 @@ ALL_MODELS = {
         },
     ),
     '26_mfcc': (
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=240,
@@ -771,6 +779,7 @@ ALL_MODELS = {
                 (4096, 'selu'),
             ),
             conv_with_bias=True,
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -778,7 +787,7 @@ ALL_MODELS = {
         },
     ),
     '27_mfcc': ( # almost the same as 26_mfcc except with batch_norm
-        lambda input_dim, output_dim: build_mfcc_2d_conv_global_pooling(
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
             input_dim,
             output_dim,
             frame_length=240,
@@ -812,6 +821,7 @@ ALL_MODELS = {
             ),
             conv_with_bias=True,
             batch_norm=True,
+            do_global_pooling=True,
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
@@ -869,6 +879,739 @@ ALL_MODELS = {
         ), {
             'wavelet_dropout_prob': 0.0,
             'conv_dropout_prob': 0.1,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '29': (
+        lambda input_dim, output_dim: build_wavelet_1d_2d_cnn_mlp(
+            input_dim,
+            output_dim,
+            should_share_wavelet=True,
+            n_wavelets=64,
+            wavelet_range=[k for k in range(1, 17)],
+            wavelet_length=8,
+            conv_structure=[
+                (1, 2, 1, 1, 64, 'selu'),
+                (1, 2, 1, 1, 64, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+                (2, 4, 1, 1, 128, 'selu'),
+                (2, 4, 1, 1, 128, 'selu'),
+                (2, 4, 1, 2, 128, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+                (2, 4, 1, 2, 256, 'selu'),
+                (2, 4, 1, 2, 256, 'selu'),
+                (2, 4, 1, 2, 256, 'selu'),
+                (2, 2, 2, 2, -1, 'pooling'),
+                (2, 4, 1, 2, 512, 'selu'),
+                (2, 4, 1, 2, 512, 'selu'),
+                (2, 4, 2, 4, 512, 'selu'),
+            ],
+            dense_structure=[
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ],
+            l2_regularize=0.00001,
+            do_global_pooling=True,
+            wavelet_pool_size=2,
+            batch_norm=True,
+            wavelet_use_gated_activation=False
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.2,
+        },
+    ),
+    '30_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 2, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            )
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.05,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '31_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 2, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+            log_epsilon=1e-6,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.05,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '32_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 2, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+            do_global_pooling=False,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.05,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '33_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 2, 'selu'),
+                (-1, 4, 4, 'pooling'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+            log_epsilon=1e-6,
+            do_global_pooling=False,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.05,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '34_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (-1, 6, 4, 'pooling'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+                (-1, 6, 4, 'pooling'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 2, 'selu'),
+                (-1, 6, 4, 'pooling'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.05,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '35_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (-1, 6, 4, 'pooling'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+                (-1, 6, 4, 'pooling'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 1, 'selu'),
+                (256, 32, 2, 'selu'),
+                (-1, 6, 4, 'pooling'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 1, 'selu'),
+                (512, 4, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+            do_global_pooling=False,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.05,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '36_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (16, 8, 1, 'selu'),
+                (16, 8, 2, 'selu'),
+                (16, 4, 4, 'relu'),
+                (32, 8, 1, 'selu'),
+                (32, 8, 1, 'selu'),
+                (32, 8, 2, 'selu'),
+                (32, 4, 4, 'relu'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 2, 'selu'),
+                (64, 4, 4, 'relu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+            ),
+            dense_structure=(),
+            do_global_pooling=True,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.0,
+        },
+    ),
+    '37_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (64, 8, 1, 'selu'),
+                (64, 8, 1, 'selu'),
+                (64, 4, 4, 'pooling'),
+                (128, 8, 1, 'selu'),
+                (128, 8, 1, 'selu'),
+                (128, 8, 2, 'selu'),
+                (128, 4, 4, 'pooling'),
+                (256, 16, 1, 'selu'),
+                (256, 16, 1, 'selu'),
+                (256, 16, 1, 'selu'),
+                (256, 16, 2, 'selu'),
+                (256, 4, 4, 'pooling'),
+                (512, 16, 1, 'selu'),
+                (512, 16, 1, 'selu'),
+                (512, 16, 2, 'selu'),
+                (512, 16, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+            do_global_pooling=False,
+            conv_with_bias=True,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.0,
+        },
+    ),
+    '38_mfcc_resnet_pool': (
+        lambda input_dim, output_dim: build_mfcc_2d_densenet(
+            input_dim,
+            output_dim,
+            frame_length=240,
+            frame_step=80,
+            n_mfccs=64,
+            num_mel_bins=64,
+            densenet_structure=[
+            # n_layers, n_kernels, n_compressed_kernels,
+            # kernel_width, kernel_height, activation, pool_length
+                (5, 16, 32, 2, 2, 'relu', 2, 2),
+                (5, 24, 48, 2, 2, 'relu', 2, 2),
+                (5, 32, 64, 3, 3, 'relu', 2, 2),
+                (5, 32, 64, 3, 3, 'relu', 2, 2),
+                (5, 64, 128, 3, 3, 'relu', 2, 2),
+            ],
+            dense_structure=(
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ),
+            do_global_pooling=False,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.1,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '39_mfcc_resnet_pool': (
+        lambda input_dim, output_dim: build_mfcc_2d_densenet(
+            input_dim,
+            output_dim,
+            frame_length=240,
+            frame_step=80,
+            n_mfccs=64,
+            num_mel_bins=64,
+            densenet_structure=[
+            # n_layers, n_kernels, n_compressed_kernels,
+            # kernel_width, kernel_height, activation, pool_length
+                (5, 16, 32, 2, 2, 'relu', 2, 2),
+                (5, 24, 48, 2, 2, 'relu', 2, 2),
+                (5, 32, 64, 3, 3, 'relu', 2, 2),
+                (5, 32, 64, 3, 3, 'relu', 2, 2),
+                (5, 64, 128, 3, 3, 'relu', 1, 1),
+            ],
+            dense_structure=(
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ),
+            do_global_pooling=True,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.1,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '40_mfcc': (
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
+            input_dim,
+            output_dim,
+            frame_length=240,
+            frame_step=80,
+            n_mfccs=128,
+            num_mel_bins=128,
+            conv_structure=[
+                (3, 3, 2, 2, 128, 'selu'),
+                (1, 1, 1, 1, 64, 'selu'),
+                (1, 1, 1, 1, 64, 'selu'),
+                (3, 3, 1, 1, 64, 'selu'),
+                (3, 3, 1, 1, 64, 'selu'),
+                (2, 2, 2, 2, 64, 'selu'),
+                (1, 1, 1, 1, 128, 'selu'),
+                (1, 1, 1, 1, 128, 'selu'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (2, 2, 2, 2, 128, 'selu'),
+                (1, 1, 1, 1, 256, 'selu'),
+                (1, 1, 1, 1, 256, 'selu'),
+                (3, 3, 1, 1, 256, 'selu'),
+                (3, 3, 1, 1, 256, 'selu'),
+                (2, 2, 2, 2, 256, 'selu'),
+                (1, 1, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (1, 1, 1, 1, 512, 'selu'),
+            ],
+            dense_structure=(
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ),
+            conv_with_bias=True,
+            batch_norm=True,
+            do_global_pooling=True,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.1,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '41_mfcc_densenet': (
+        lambda input_dim, output_dim: build_mfcc_2d_densenet(
+            input_dim,
+            output_dim,
+            frame_length=240,
+            frame_step=80,
+            n_mfccs=64,
+            num_mel_bins=128,
+            densenet_structure=[
+            # n_layers, n_kernels, n_compressed_kernels,
+            # kernel_width, kernel_height, activation, pool_length
+                (3, 8, 8, 2, 2, 'selu', 2, 2),
+                (6, 16, 10, 3, 3, 'selu', 2, 2),
+                (8, 16, 12, 3, 3, 'selu', 2, 2),
+                (8, 32, 24, 3, 3, 'selu', 2, 2),
+            ],
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+            do_global_pooling=False,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.0,
+        },
+    ),
+    '42_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (16, 8, 1, 'selu'),
+                (16, 8, 1, 'selu'),
+                (16, 4, 4, 'selu'),
+                (None, None, None, 'skip'),
+                (32, 8, 1, 'selu'),
+                (32, 8, 1, 'selu'),
+                (32, 8, 2, 'selu'),
+                (32, 4, 4, 'selu'),
+                (None, None, None, 'skip'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 2, 'selu'),
+                (64, 4, 4, 'selu'),
+                (None, None, None, 'skip'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+                (128, 16, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+            do_global_pooling=True,
+            conv_with_bias=True,
+            samplewise_norm=False,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.0,
+        },
+    ),
+    '43_conv_1d_vgg': (
+        lambda input_dim, output_dim: build_conv_1d_vgg(
+            input_dim,
+            output_dim,
+            conv_structure=(
+                (16, 8, 1, 'selu'),
+                (16, 8, 1, 'selu'),
+                (16, 4, 4, 'selu'),
+                (None, None, None, 'skip'),
+                (32, 8, 1, 'selu'),
+                (32, 8, 1, 'selu'),
+                (32, 8, 2, 'selu'),
+                (32, 4, 4, 'selu'),
+                (None, None, None, 'skip'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 1, 'selu'),
+                (64, 16, 2, 'selu'),
+                (64, 4, 4, 'selu'),
+                (None, None, None, 'skip'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 1, 'selu'),
+                (128, 16, 2, 'selu'),
+                (128, 16, 2, 'selu'),
+            ),
+            dense_structure=(
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ),
+            do_global_pooling=True,
+            conv_with_bias=True,
+            samplewise_norm=True,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.0,
+        },
+    ),
+    '44_mfcc': (
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
+            input_dim,
+            output_dim,
+            frame_length=240,
+            frame_step=80,
+            n_mfccs=64,
+            num_mel_bins=64,
+            conv_structure=[
+                (2, 2, 1, 1, 64, 'selu'),
+                (2, 2, 1, 1, 64, 'selu'),
+                (2, 2, 2, 2, 32, 'tanh'),
+                (None, None, None, None, None, 'skip'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (2, 2, 2, 2, 64, 'tanh'),
+                (None, None, None, None, None, 'skip'),
+                (3, 3, 1, 1, 256, 'selu'),
+                (3, 3, 1, 1, 256, 'selu'),
+                (3, 3, 1, 1, 256, 'selu'),
+                (2, 2, 2, 2, 128, 'tanh'),
+                (None, None, None, None, None, 'skip'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (2, 2, 2, 2, 256, 'tanh'),
+                (None, None, None, None, None, 'skip'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+            ],
+            dense_structure=(
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ),
+            conv_with_bias=True,
+            batch_norm=True,
+            do_global_pooling=True,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.1,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '45': (
+        lambda input_dim, output_dim: build_wavelet_1d_2d_cnn_mlp(
+            input_dim,
+            output_dim,
+            should_share_wavelet=False,
+            n_wavelets=32,
+            wavelet_range=[2**k for k in range(9)],
+            wavelet_length=16,
+            conv_structure=[
+                (2, 4, 1, 2, 32, 'selu'),
+                (2, 4, 1, 2, 32, 'selu'),
+                (2, 4, 1, 2, 64, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+                (2, 4, 1, 2, 64, 'selu'),
+                (2, 4, 1, 2, 64, 'selu'),
+                (2, 8, 1, 2, 128, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+                (4, 16, 1, 2, 128, 'selu'),
+                (4, 16, 1, 2, 256, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+            ],
+            dense_structure=[
+                (2048, 'selu'),
+                (2048, 'selu'),
+            ],
+            l2_regularize=0.00001,
+            do_global_pooling=True,
+            batch_norm=True,
+            wavelet_use_gated_activation=True,
+            wavelet_pool_size=2,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.0,
+        },
+    ),
+    '46_mfcc': (
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
+            input_dim,
+            output_dim,
+            frame_length=240,
+            frame_step=80,
+            n_mfccs=128,
+            num_mel_bins=128,
+            conv_structure=[
+                (2, 2, 1, 1, 64, 'selu'),
+                (2, 2, 1, 1, 64, 'selu'),
+                (2, 2, 2, 2, 64, 'selu'),
+                (None, None, None, None, None, 'skip'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (2, 2, 2, 2, 128, 'selu'),
+                (None, None, None, None, None, 'skip'),
+                (3, 3, 1, 1, 256, 'selu'),
+                (3, 3, 1, 1, 256, 'selu'),
+                (3, 3, 1, 1, 256, 'selu'),
+                (2, 2, 2, 2, 256, 'selu'),
+                (None, None, None, None, None, 'skip'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (2, 2, 2, 2, 512, 'selu'),
+                (None, None, None, None, None, 'skip'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+                (3, 3, 1, 1, 512, 'selu'),
+            ],
+            dense_structure=(
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ),
+            conv_with_bias=True,
+            batch_norm=True,
+            do_global_pooling=True,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '47_mfcc': (
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
+            input_dim,
+            output_dim,
+            frame_length=240,
+            frame_step=80,
+            n_mfccs=64,
+            num_mel_bins=64,
+            conv_structure=[
+                (2, 64, 1, 1, 64, 'selu'),
+                (2, 64, 2, 1, 64, 'selu'),
+                (3, 64, 1, 1, 128, 'selu'),
+                (2, 64, 2, 1, 128, 'selu'),
+                (3, 64, 2, 1, 256, 'selu'),
+                (2, 64, 2, 1, 256, 'selu'),
+                (3, 64, 2, 1, 512, 'selu'),
+                (2, 64, 2, 1, 512, 'selu'),
+            ],
+            dense_structure=(
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ),
+            conv_with_bias=True,
+            batch_norm=True,
+            do_global_pooling=False,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.1,
+        },
+    ),
+    '48': (
+        lambda input_dim, output_dim: build_wavelet_1d_2d_cnn_mlp(
+            input_dim,
+            output_dim,
+            should_share_wavelet=True,
+            n_wavelets=32,
+            wavelet_range=[k for k in range(1, 33)],
+            wavelet_length=8,
+            conv_structure=[
+                (2, 4, 1, 2, 32, 'selu'),
+                (2, 4, 1, 2, 32, 'selu'),
+                (2, 4, 1, 2, 64, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+                (2, 4, 1, 2, 64, 'selu'),
+                (2, 4, 1, 2, 64, 'selu'),
+                (2, 8, 1, 2, 128, 'selu'),
+                (1, 2, 1, 2, -1, 'pooling'),
+                (4, 16, 1, 2, 128, 'selu'),
+                (4, 16, 1, 2, 256, 'selu'),
+            ],
+            dense_structure=[
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ],
+            l2_regularize=0.00001,
+            do_global_pooling=True,
+            batch_norm=True,
+            wavelet_use_gated_activation=False,
+            wavelet_pool_size=2,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
+            'dense_dropout_prob': 0.0,
+        },
+    ),
+    '49_mfcc_global_pool': (
+        lambda input_dim, output_dim: build_mfcc_2d_conv(
+            input_dim,
+            output_dim,
+            frame_length=240,
+            frame_step=80,
+            n_mfccs=128,
+            num_mel_bins=128,
+            conv_structure=[
+                (2, 2, 1, 1, 32, 'selu'),
+                (2, 2, 1, 1, 32, 'selu'),
+                (2, 2, 2, 2, 32, 'selu'),
+                (2, 2, 1, 1, 64, 'selu'),
+                (2, 2, 1, 1, 64, 'selu'),
+                (2, 2, 1, 1, 64, 'selu'),
+                (2, 2, 2, 2, 64, 'selu'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (3, 3, 2, 2, 128, 'selu'),
+                (3, 3, 1, 1, 128, 'selu'),
+                (4, 4, 4, 4, 256, 'selu'),
+                (5, 5, 1, 1, 256, 'selu'),
+                (5, 5, 1, 1, 256, 'selu'),
+                (7, 7, 2, 2, 512, 'selu'),
+            ],
+            dense_structure=(
+                (4096, 'selu'),
+                (4096, 'selu'),
+            ),
+            do_global_pooling=True,
+            conv_with_bias=True,
+            batch_norm=True,
+        ), {
+            'wavelet_dropout_prob': 0.0,
+            'conv_dropout_prob': 0.0,
             'dense_dropout_prob': 0.1,
         },
     ),

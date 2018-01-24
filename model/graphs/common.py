@@ -19,12 +19,14 @@ ACTIVATIONS = {
 }
 
 
-def get_input(input_dim, output_dim):
+def get_input(input_dim, output_dim, divide_std=True):
     x_place = tf.placeholder(
         dtype=tf.float32,
         shape=[None, input_dim],
         name=X_PLACE,
     )
+    if divide_std:
+        x_place = x_place / 3128.12
     y_place = tf.placeholder(
         dtype=tf.float32,
         shape=[None, output_dim],
@@ -136,6 +138,12 @@ def conv2d_layer(
         name=name + '_conv_op',
         data_format='NCHW'
     )
+    bias = tf.get_variable(
+        name + 'bias',
+        shape=(conved.shape[1],),
+        initializer=tf.zeros_initializer(),
+    )
+    conved = tf.nn.bias_add(conved, bias, 'NCHW')
     activation = ACTIVATIONS[activation]
     return activation(conved)
 
@@ -238,9 +246,10 @@ def dense_2d_block(
     ):
     a_input = input_wave
     for idx in range(n_layers):
+        print(a_input.shape)
         if with_compressed:
             compress_layer_name = name + str(idx) + '_compressed'
-            a_input = conv2d_layer(
+            a_input_to_conv = conv2d_layer(
                 a_input,
                 is_training,
                 1,
@@ -249,10 +258,12 @@ def dense_2d_block(
                 activation=activation,
                 name=compress_layer_name,
             )
+        else:
+            a_input_to_conv = a_input
+        print(a_input_to_conv.shape)
         conv_layer_name = name + str(idx) + '_conv'
-        print(a_input.shape)
         a = conv2d_layer(
-            a_input,
+            a_input_to_conv,
             is_training,
             kernel_height,
             kernel_width,

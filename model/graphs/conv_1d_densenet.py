@@ -18,10 +18,12 @@ def build_conv_1d_dense_net(
         dense_net_structure,
         dense_structure,
         do_global_pooling=False,
+        log_epsilon=None,
         seed_base=2017,
     ):
     x_place, y_place, sample_weight_place, lr_place, _, conv_dropout_place, dense_dropout_place, is_training = get_input(input_dim, output_dim)
-
+    if log_epsilon is not None:
+        x_place = tf.log(tf.abs(x_place) + log_epsilon)
     x_place_reshape = tf.expand_dims(x_place, axis=1)
     print(x_place_reshape.shape)
 
